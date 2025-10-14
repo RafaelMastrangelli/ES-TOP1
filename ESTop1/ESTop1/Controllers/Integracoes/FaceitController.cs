@@ -1,7 +1,7 @@
 using ESTop1.Infrastructure.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ESTop1.Controllers.Integracoes;
+namespace ESTop1.Api.Controllers;
 
 [ApiController]
 [Route("api/integracoes/faceit")]

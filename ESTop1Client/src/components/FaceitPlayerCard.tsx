@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { ExternalLink, Trophy, Target, TrendingUp, Users, Calendar } from 'lucide-react';
 import { Button } from './ui/button';
+import { obterBandeiraPais } from '@/lib/utils';
 
 interface FaceitPlayerCardProps {
   data: FaceitSearchResult;
@@ -49,7 +50,9 @@ const FaceitPlayerCard = ({ data, onClose }: FaceitPlayerCardProps) => {
             />
             <div>
               <CardTitle className="text-2xl">{player.nickname}</CardTitle>
-              <p className="text-muted-foreground">{player.country}</p>
+              <p className="text-muted-foreground">
+                {obterBandeiraPais(player.country)} {player.country}
+              </p>
             </div>
           </div>
           <div className="flex gap-2">

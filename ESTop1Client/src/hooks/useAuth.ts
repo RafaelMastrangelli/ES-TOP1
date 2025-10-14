@@ -1,13 +1,25 @@
 import { useState, useEffect } from 'react';
+import { api } from '../lib/api';
 
 interface User {
   id: string;
   nome: string;
   email: string;
+  tipo: string;
+}
+
+interface Assinatura {
+  id: string;
+  plano: string;
+  status: string;
+  dataInicio: string;
+  dataFim: string;
+  valorMensal: number;
 }
 
 interface AuthState {
   user: User | null;
+  assinatura: Assinatura | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -15,37 +27,47 @@ interface AuthState {
 export const useAuth = () => {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
+    assinatura: null,
     isAuthenticated: false,
     isLoading: true
   });
 
   useEffect(() => {
-    // Simular verificação de autenticação
     const checkAuth = async () => {
       try {
-        // Aqui você faria a verificação real com a API
         const token = localStorage.getItem('auth_token');
         if (token) {
-          // Simular dados do usuário
-          setAuthState({
-            user: {
-              id: '1',
-              nome: 'Usuário Teste',
-              email: 'usuario@teste.com'
-            },
-            isAuthenticated: true,
-            isLoading: false
-          });
+          // Verificar se o token ainda é válido
+          const response = await api.get('/auth/me');
+          if (response.data) {
+            setAuthState({
+              user: response.data.usuario,
+              assinatura: response.data.assinatura,
+              isAuthenticated: true,
+              isLoading: false
+            });
+          } else {
+            localStorage.removeItem('auth_token');
+            setAuthState({
+              user: null,
+              assinatura: null,
+              isAuthenticated: false,
+              isLoading: false
+            });
+          }
         } else {
           setAuthState({
             user: null,
+            assinatura: null,
             isAuthenticated: false,
             isLoading: false
           });
         }
       } catch (error) {
+        localStorage.removeItem('auth_token');
         setAuthState({
           user: null,
+          assinatura: null,
           isAuthenticated: false,
           isLoading: false
         });
@@ -57,61 +79,54 @@ export const useAuth = () => {
 
   const login = async (email: string, password: string) => {
     try {
-      // TODO: Implementar API real de autenticação
-      // Por enquanto, simular login
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await api.post('/auth/login', { email, senha: password });
       
-      // Validação básica (remover quando implementar API real)
-      if (email === 'admin@estop1.com' && password === 'admin123') {
-        const token = 'fake-jwt-token';
-        localStorage.setItem('auth_token', token);
+      if (response.data.token) {
+        localStorage.setItem('auth_token', response.data.token);
         
         setAuthState({
-          user: {
-            id: '1',
-            nome: 'Administrador',
-            email: email
-          },
+          user: response.data.usuario,
+          assinatura: response.data.assinatura,
           isAuthenticated: true,
           isLoading: false
         });
         
         return { success: true };
       } else {
-        return { success: false, error: 'Email ou senha incorretos' };
+        return { success: false, error: 'Resposta inválida do servidor' };
       }
-    } catch (error) {
-      return { success: false, error: 'Erro ao fazer login' };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Erro ao fazer login';
+      return { success: false, error: errorMessage };
     }
   };
 
-  const register = async (nome: string, email: string, password: string) => {
+  const register = async (nome: string, email: string, password: string, tipo: string = 'Jogador') => {
     try {
-      // TODO: Implementar API real de cadastro
-      // Por enquanto, simular cadastro
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await api.post('/auth/registro', { 
+        nome, 
+        email, 
+        senha: password, 
+        tipo 
+      });
       
-      // Validação básica (remover quando implementar API real)
-      if (email.includes('@') && password.length >= 6) {
-        const token = 'fake-jwt-token';
-        localStorage.setItem('auth_token', token);
+      if (response.data.token) {
+        localStorage.setItem('auth_token', response.data.token);
         
         setAuthState({
-          user: {
-            id: '1',
-            nome: nome,
-            email: email
-          },
+          user: response.data.usuario,
+          assinatura: response.data.assinatura,
           isAuthenticated: true,
           isLoading: false
         });
         
         return { success: true };
       } else {
-        return { success: false, error: 'Email inválido ou senha muito curta' };
+        return { success: false, error: 'Resposta inválida do servidor' };
       }
-    } catch (error) {
-      return { success: false, error: 'Erro ao criar conta' };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Erro ao criar conta';
+      return { success: false, error: errorMessage };
     }
   };
 
@@ -119,6 +134,7 @@ export const useAuth = () => {
     localStorage.removeItem('auth_token');
     setAuthState({
       user: null,
+      assinatura: null,
       isAuthenticated: false,
       isLoading: false
     });

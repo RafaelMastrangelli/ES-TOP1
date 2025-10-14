@@ -4,7 +4,7 @@ import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { TrendingUp, User } from 'lucide-react';
 import { formatarMoeda, obterBandeiraPais } from '@/lib/utils';
-import playerPlaceholder from '@/assets/player-placeholder.jpg';
+import PlayerDefaultImage from './PlayerDefaultImage';
 
 interface JogadorCardProps {
   jogador: Jogador;
@@ -54,8 +54,8 @@ const JogadorCard = ({ jogador }: JogadorCardProps) => {
     <Link to={`/jogadores/${jogador.id}`}>
       <Card className="overflow-hidden transition-all hover:shadow-lg hover:scale-[1.02] hover:border-primary">
         <div className="aspect-square relative bg-gradient-dark">
-          <img 
-            src={jogador.fotoUrl || playerPlaceholder} 
+          <PlayerDefaultImage 
+            src={jogador.fotoUrl} 
             alt={jogador.apelido}
             className="w-full h-full object-cover opacity-80"
           />
@@ -76,7 +76,13 @@ const JogadorCard = ({ jogador }: JogadorCardProps) => {
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Time</span>
             <span className="text-sm font-medium">
-              {jogador.timeAtual?.nome || 'Sem time'}
+              {jogador.timeAtual ? (
+                <span className="flex items-center gap-1">
+                  {obterBandeiraPais(jogador.timeAtual.pais)} {jogador.timeAtual.nome}
+                </span>
+              ) : (
+                'Sem time'
+              )}
             </span>
           </div>
 

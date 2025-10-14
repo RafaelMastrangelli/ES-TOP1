@@ -19,6 +19,7 @@ const Jogadores = () => {
   const [isLoadingFaceit, setIsLoadingFaceit] = useState(false);
   const [aiData, setAiData] = useState<any>(null);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [activeSearchType, setActiveSearchType] = useState<'local' | 'faceit' | 'ia' | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['jogadores', filtros],
@@ -45,6 +46,7 @@ const Jogadores = () => {
     // Limpar resultados anteriores
     setAiData(null);
     setIsLoadingAI(false);
+    setActiveSearchType('faceit');
     
     setIsLoadingFaceit(true);
     try {
@@ -60,19 +62,32 @@ const Jogadores = () => {
 
   const handleCloseFaceit = () => {
     setFaceitData(null);
+    setActiveSearchType(null);
   };
 
   const handleAISearch = async (consulta: string) => {
     // Limpar resultados anteriores
     setFaceitData(null);
     setIsLoadingFaceit(false);
+    setActiveSearchType('ia');
     
     setIsLoadingAI(true);
     try {
-      const result = await api.openai.buscarJogadores(consulta);
+      // Usar endpoint de teste para desenvolvimento (sem verificação de assinatura)
+      const result = await api.openai.buscarJogadoresTeste(consulta);
       setAiData(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao buscar com IA:', error);
+      
+      // Handle specific error cases
+      if (error.response?.status === 403) {
+        alert('Acesso negado: Você precisa de uma assinatura ativa com acesso à busca por IA para usar esta funcionalidade.');
+      } else if (error.response?.status === 401) {
+        alert('Não autorizado: Faça login novamente para continuar.');
+      } else {
+        alert(`Erro ao buscar jogadores com IA: ${error.message || 'Erro desconhecido'}`);
+      }
+      
       setAiData({ jogadores: [], total: 0, consultaOriginal: consulta, consultaIA: '' });
     } finally {
       setIsLoadingAI(false);
@@ -81,6 +96,7 @@ const Jogadores = () => {
 
   const handleCloseAI = () => {
     setAiData(null);
+    setActiveSearchType(null);
   };
 
   const handleClearAllResults = () => {
@@ -88,6 +104,7 @@ const Jogadores = () => {
     setAiData(null);
     setIsLoadingFaceit(false);
     setIsLoadingAI(false);
+    setActiveSearchType(null);
   };
 
   return (
@@ -97,9 +114,28 @@ const Jogadores = () => {
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Jogadores Profissionais</h1>
-          <p className="text-muted-foreground">
-            Explore {data?.total || 0} jogadores cadastrados
-          </p>
+          <div className="flex items-center gap-4">
+            <p className="text-muted-foreground">
+              {activeSearchType === 'faceit' && 'Resultados da busca FACEIT'}
+              {activeSearchType === 'ia' && 'Resultados da busca com IA'}
+              {activeSearchType === 'local' && `Explore ${data?.total || 0} jogadores cadastrados`}
+              {activeSearchType === null && `Explore ${data?.total || 0} jogadores cadastrados`}
+            </p>
+            {activeSearchType && (
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  activeSearchType === 'faceit' ? 'bg-blue-500' :
+                  activeSearchType === 'ia' ? 'bg-purple-500' :
+                  'bg-green-500'
+                }`} />
+                <span className="text-sm text-muted-foreground">
+                  {activeSearchType === 'faceit' ? 'FACEIT' :
+                   activeSearchType === 'ia' ? 'IA' :
+                   'Local'}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="space-y-6">
@@ -108,6 +144,7 @@ const Jogadores = () => {
             onChange={(newFiltros) => {
               // Limpar resultados de outras buscas quando fazer busca local
               handleClearAllResults();
+              setActiveSearchType('local');
               setFiltros(newFiltros);
             }}
             onFaceitSearch={handleFaceitSearch}
@@ -174,59 +211,71 @@ const Jogadores = () => {
             </div>
           )}
 
-          {/* Loading Local */}
-          {isLoading && (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          )}
-
-          {error && (
-            <div className="text-center py-16">
-              <p className="text-destructive">Erro ao carregar jogadores. Tente novamente.</p>
-            </div>
-          )}
-
-          {data && data.items.length === 0 && (
-            <div className="text-center py-16">
-              <p className="text-muted-foreground">Nenhum jogador encontrado com os filtros selecionados.</p>
-            </div>
-          )}
-
-          {data && data.items.length > 0 && (
+          {/* Resultados da Busca Local - só exibe quando busca local está ativa ou nenhuma busca específica está ativa */}
+          {(activeSearchType === 'local' || activeSearchType === null) && (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {data.items.map((jogador) => (
-                  <JogadorCard key={jogador.id} jogador={jogador} />
-                ))}
-              </div>
-
-              {totalPaginas > 1 && (
-                <div className="flex items-center justify-center gap-4 pt-8">
-                  <Button
-                    variant="outline"
-                    onClick={handlePaginaAnterior}
-                    disabled={filtros.page === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    Anterior
-                  </Button>
-
-                  <span className="text-sm text-muted-foreground">
-                    Página {filtros.page} de {totalPaginas}
-                  </span>
-
-                  <Button
-                    variant="outline"
-                    onClick={handleProximaPagina}
-                    disabled={filtros.page === totalPaginas}
-                  >
-                    Próxima
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </Button>
+              {/* Loading Local */}
+              {isLoading && (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               )}
+
+              {error && (
+                <div className="text-center py-16">
+                  <p className="text-destructive">Erro ao carregar jogadores. Tente novamente.</p>
+                </div>
+              )}
+
+              {data && data.items.length === 0 && (
+                <div className="text-center py-16">
+                  <p className="text-muted-foreground">Nenhum jogador encontrado com os filtros selecionados.</p>
+                </div>
+              )}
+
+              {data && data.items.length > 0 && (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {data.items.map((jogador) => (
+                      <JogadorCard key={jogador.id} jogador={jogador} />
+                    ))}
+                  </div>
+
+                  {totalPaginas > 1 && (
+                    <div className="flex items-center justify-center gap-4 pt-8">
+                      <Button
+                        variant="outline"
+                        onClick={handlePaginaAnterior}
+                        disabled={filtros.page === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-2" />
+                        Anterior
+                      </Button>
+
+                      <span className="text-sm text-muted-foreground">
+                        Página {filtros.page} de {totalPaginas}
+                      </span>
+
+                      <Button
+                        variant="outline"
+                        onClick={handleProximaPagina}
+                        disabled={filtros.page === totalPaginas}
+                      >
+                        Próxima
+                        <ChevronRight className="h-4 w-4 ml-2" />
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
             </>
+          )}
+
+          {/* Mensagem quando nenhuma busca está ativa e não há resultados */}
+          {activeSearchType === null && !data && !isLoading && !error && (
+            <div className="text-center py-16">
+              <p className="text-muted-foreground">Use os filtros acima para buscar jogadores.</p>
+            </div>
           )}
         </div>
       </main>

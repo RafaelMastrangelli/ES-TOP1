@@ -20,23 +20,162 @@ const request = async <T>(
   url: string, 
   options: RequestInit = {}
 ): Promise<T> => {
+  const token = localStorage.getItem('auth_token');
+  
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
       ...options.headers,
     },
     ...options,
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Erro ${response.status}: ${errorText}`);
+    let errorData;
+    try {
+      const responseText = await response.text();
+      try {
+        errorData = JSON.parse(responseText);
+      } catch {
+        errorData = { message: responseText };
+      }
+    } catch {
+      errorData = { message: `Erro ${response.status}` };
+    }
+    
+    const error = new Error(errorData.message || `Erro ${response.status}`);
+    (error as any).response = { data: errorData, status: response.status };
+    throw error;
   }
 
   return response.json();
 };
 
 export const api = {
+  // Métodos HTTP básicos para usar com axios
+  get: async (url: string) => {
+    const token = localStorage.getItem('auth_token');
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
+    });
+    
+    if (!response.ok) {
+      let errorData;
+      try {
+        const responseText = await response.text();
+        try {
+          errorData = JSON.parse(responseText);
+        } catch {
+          errorData = { message: responseText };
+        }
+      } catch {
+        errorData = { message: `Erro ${response.status}` };
+      }
+      
+      const error = new Error(errorData.message || `Erro ${response.status}`);
+      (error as any).response = { data: errorData, status: response.status };
+      throw error;
+    }
+    
+    return { data: await response.json() };
+  },
+
+  post: async (url: string, data?: any) => {
+    const token = localStorage.getItem('auth_token');
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
+      body: data ? JSON.stringify(data) : undefined,
+    });
+    
+    if (!response.ok) {
+      let errorData;
+      try {
+        const responseText = await response.text();
+        try {
+          errorData = JSON.parse(responseText);
+        } catch {
+          errorData = { message: responseText };
+        }
+      } catch {
+        errorData = { message: `Erro ${response.status}` };
+      }
+      
+      const error = new Error(errorData.message || `Erro ${response.status}`);
+      (error as any).response = { data: errorData, status: response.status };
+      throw error;
+    }
+    
+    return { data: await response.json() };
+  },
+
+  auth: {
+    login: async (email: string, senha: string) => {
+      return request<{
+        token: string;
+        usuario: any;
+        assinatura: any;
+      }>(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        body: JSON.stringify({ email, senha }),
+      });
+    },
+
+    registro: async (nome: string, email: string, senha: string, tipo: string) => {
+      return request<{
+        token: string;
+        usuario: any;
+        assinatura: any;
+      }>(`${API_BASE_URL}/auth/registro`, {
+        method: 'POST',
+        body: JSON.stringify({ nome, email, senha, tipo }),
+      });
+    },
+
+    me: async () => {
+      return request<{
+        usuario: any;
+        assinatura: any;
+      }>(`${API_BASE_URL}/auth/me`);
+    },
+  },
+
+  assinaturas: {
+    obterPlanos: async () => {
+      return request<any[]>(`${API_BASE_URL}/assinaturas/planos`);
+    },
+
+    obterMinha: async () => {
+      return request<any>(`${API_BASE_URL}/assinaturas/minha`);
+    },
+
+    criar: async (plano: string) => {
+      return request<any>(`${API_BASE_URL}/assinaturas/criar`, {
+        method: 'POST',
+        body: JSON.stringify({ plano }),
+      });
+    },
+
+    cancelar: async (id: string) => {
+      return request<any>(`${API_BASE_URL}/assinaturas/${id}/cancelar`, {
+        method: 'POST',
+      });
+    },
+
+    renovar: async (id: string) => {
+      return request<any>(`${API_BASE_URL}/assinaturas/${id}/renovar`, {
+        method: 'POST',
+      });
+    },
+  },
+
   jogadores: {
     listar: async (filtros?: FiltrosJogadores): Promise<JogadoresPaginados> => {
       const params = new URLSearchParams();
@@ -163,6 +302,21 @@ export const api = {
         consultaOriginal: string;
         consultaIA: string;
       }>(`${API_BASE_URL}/integracoes/openai/buscar-jogadores?consulta=${encodeURIComponent(consulta)}`);
+    },
+
+    // TESTE: Endpoint para desenvolvimento sem verificação de assinatura
+    buscarJogadoresTeste: async (consulta: string): Promise<{
+      jogadores: any[];
+      total: number;
+      consultaOriginal: string;
+      consultaIA: string;
+    }> => {
+      return request<{
+        jogadores: any[];
+        total: number;
+        consultaOriginal: string;
+        consultaIA: string;
+      }>(`${API_BASE_URL}/integracoes/openai/teste/buscar-jogadores?consulta=${encodeURIComponent(consulta)}`);
     },
 
     sugerirFiltros: async (descricao: string): Promise<{

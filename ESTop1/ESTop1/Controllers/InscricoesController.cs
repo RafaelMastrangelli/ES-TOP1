@@ -1,8 +1,6 @@
 using ESTop1.Api.DTOs;
-using ESTop1.Domain;
-using ESTop1.Infrastructure;
+using ESTop1.Domain.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace ESTop1.Api.Controllers;
 
@@ -13,8 +11,12 @@ namespace ESTop1.Api.Controllers;
 [Route("api/inscricoes")]
 public class InscricoesController : ControllerBase
 {
-    private readonly AppDbContext _db;
-    public InscricoesController(AppDbContext db) => _db = db;
+    private readonly IInscricaoService _inscricaoService;
+    
+    public InscricoesController(IInscricaoService inscricaoService)
+    {
+        _inscricaoService = inscricaoService;
+    }
 
     /// <summary>
     /// Cria uma nova inscrição de aspirante
@@ -24,38 +26,8 @@ public class InscricoesController : ControllerBase
     {
         try
         {
-            var jogadorId = Guid.NewGuid();
-            var jogador = new Jogador
-            {
-                Id = jogadorId,
-                Apelido = request.Apelido,
-                Pais = request.Pais ?? "BR",
-                Idade = request.Idade,
-                FuncaoPrincipal = request.FuncaoPrincipal,
-                Status = StatusJogador.Amador,
-                Disponibilidade = Disponibilidade.Livre,
-                ValorDeMercado = 0,
-                Visivel = false
-            };
-
-            // Adicionar estatística geral se fornecida
-            if (request.Rating.HasValue || request.KD.HasValue || request.PartidasJogadas.HasValue)
-            {
-                jogador.Estatisticas.Add(new Estatistica
-                {
-                    Id = Guid.NewGuid(),
-                    JogadorId = jogadorId,
-                    Periodo = "Geral",
-                    Rating = request.Rating ?? 0,
-                    KD = request.KD ?? 0,
-                    PartidasJogadas = request.PartidasJogadas ?? 0
-                });
-            }
-
-            _db.Jogadores.Add(jogador);
-            await _db.SaveChangesAsync(ct);
-
-            return Ok(new { inscricaoId = jogadorId, message = "Inscrição criada com sucesso" });
+            var resultado = await _inscricaoService.CriarInscricaoAsync(request, ct);
+            return Ok(resultado);
         }
         catch (Exception ex)
         {
@@ -71,12 +43,12 @@ public class InscricoesController : ControllerBase
     {
         try
         {
-            var jogador = await _db.Jogadores.FindAsync(id);
-            if (jogador == null)
-                return NotFound();
-
-            // Mock: apenas retorna sucesso
-            return Ok(new { message = "Pagamento processado com sucesso" });
+            var resultado = await _inscricaoService.PagarInscricaoAsync(id, ct);
+            return Ok(resultado);
+        }
+        catch (ArgumentException)
+        {
+            return NotFound();
         }
         catch (Exception ex)
         {
@@ -92,14 +64,12 @@ public class InscricoesController : ControllerBase
     {
         try
         {
-            var jogador = await _db.Jogadores.FindAsync(id);
-            if (jogador == null)
-                return NotFound();
-
-            jogador.Visivel = true;
-            await _db.SaveChangesAsync(ct);
-
-            return Ok(new { message = "Inscrição aprovada com sucesso" });
+            var resultado = await _inscricaoService.AprovarInscricaoAsync(id, ct);
+            return Ok(resultado);
+        }
+        catch (ArgumentException)
+        {
+            return NotFound();
         }
         catch (Exception ex)
         {

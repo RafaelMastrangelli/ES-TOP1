@@ -60,31 +60,14 @@ const FiltrosJogadores = ({ filtros, onChange, onFaceitSearch, onAISearch }: Fil
   };
 
   const getButtonText = () => {
-    switch (tipoBusca) {
-      case 'faceit':
-        return 'FACEIT';
-      case 'ia':
-        return 'IA';
-      default:
-        return 'Buscar';
-    }
+    return 'Buscar';
   };
 
   const getButtonVariant = () => {
-    switch (tipoBusca) {
-      case 'faceit':
-        return 'outline';
-      case 'ia':
-        return 'default';
-      default:
-        return 'default';
-    }
+    return 'outline';
   };
 
   const getButtonClassName = () => {
-    if (tipoBusca === 'ia') {
-      return 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600';
-    }
     return '';
   };
 

@@ -1,8 +1,9 @@
-﻿using ESTop1.Api.DTOs;
-using ESTop1.Domain;
-using ESTop1.Infrastructure;
+﻿using ESTop1.Api.Attributes;
+using ESTop1.Api.DTOs;
+using ESTop1.Api.Middleware;
+using ESTop1.Domain.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace ESTop1.Api.Controllers;
 
@@ -13,187 +14,85 @@ namespace ESTop1.Api.Controllers;
 [Route("api/jogadores")]
 public class JogadoresController : ControllerBase
 {
-    private readonly AppDbContext _db;
-    public JogadoresController(AppDbContext db) => _db = db;
+    private readonly IJogadorService _jogadorService;
+    
+    public JogadoresController(IJogadorService jogadorService)
+    {
+        _jogadorService = jogadorService;
+    }
 
     /// <summary>
     /// Lista jogadores com filtros e paginação
     /// </summary>
     [HttpGet]
+    [Authorize]
+    [RequerAssinatura("buscar_jogadores")]
     public async Task<IActionResult> Listar([FromQuery] FiltroJogador filtro, CancellationToken ct)
     {
-        var query = _db.Jogadores.AsNoTracking()
-            .Include(j => j.TimeAtual)
-            .Include(j => j.Estatisticas)
-            .Where(j => j.Visivel);
-
-        // Aplicar filtros
-        if (!string.IsNullOrEmpty(filtro.Q))
-            query = query.Where(j => j.Apelido.Contains(filtro.Q));
-
-        if (!string.IsNullOrEmpty(filtro.Pais))
-            query = query.Where(j => j.Pais == filtro.Pais);
-
-        if (filtro.Status.HasValue)
-            query = query.Where(j => j.Status == filtro.Status.Value);
-
-        if (filtro.Disp.HasValue)
-            query = query.Where(j => j.Disponibilidade == filtro.Disp.Value);
-
-        if (filtro.Funcao.HasValue)
-            query = query.Where(j => j.FuncaoPrincipal == filtro.Funcao.Value);
-
-        if (filtro.MaxIdade.HasValue)
-            query = query.Where(j => j.Idade <= filtro.MaxIdade.Value);
-
-        // Aplicar ordenação
-        query = filtro.Ordenar switch
+        try
         {
-            "rating_desc" => query.OrderByDescending(j => j.Estatisticas.Where(e => e.Periodo == "Geral").Select(e => e.Rating).FirstOrDefault()),
-            "valor_desc" => query.OrderByDescending(j => j.ValorDeMercado),
-            "apelido_asc" => query.OrderBy(j => j.Apelido),
-            _ => query.OrderBy(j => j.Apelido)
-        };
-
-        // Contar total
-        var total = await query.CountAsync(ct);
-
-        // Aplicar paginação
-        var jogadores = await query
-            .Skip((filtro.Page - 1) * filtro.PageSize)
-            .Take(filtro.PageSize)
-            .Select(j => new
-            {
-                j.Id,
-                j.Apelido,
-                j.Pais,
-                j.Idade,
-                Time = j.TimeAtual != null ? j.TimeAtual.Nome : null,
-                j.FuncaoPrincipal,
-                j.Status,
-                j.Disponibilidade,
-                j.ValorDeMercado,
-                j.FotoUrl,
-                RatingGeral = j.Estatisticas.Where(e => e.Periodo == "Geral").Select(e => e.Rating).FirstOrDefault()
-            })
-            .ToListAsync(ct);
-
-        return Ok(new { total, page = filtro.Page, pageSize = filtro.PageSize, items = jogadores });
+            var (jogadores, total) = await _jogadorService.ListarJogadoresAsync(filtro, ct);
+            return Ok(new { total, page = filtro.Page, pageSize = filtro.PageSize, items = jogadores });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Erro ao listar jogadores: {ex.Message}");
+        }
     }
 
     /// <summary>
     /// Obtém detalhes de um jogador específico
     /// </summary>
     [HttpGet("{id}")]
+    [Authorize]
+    [RequerAssinatura("estatisticas")]
     public async Task<IActionResult> Obter(Guid id, CancellationToken ct)
     {
-        var jogador = await _db.Jogadores.AsNoTracking()
-            .Include(j => j.TimeAtual)
-            .Include(j => j.Estatisticas)
-            .FirstOrDefaultAsync(j => j.Id == id, ct);
-
-        if (jogador == null)
-            return NotFound();
-
-        // Retornar dados sem referências circulares
-        var resultado = new
+        try
         {
-            jogador.Id,
-            jogador.Apelido,
-            jogador.Pais,
-            jogador.Idade,
-            jogador.FuncaoPrincipal,
-            jogador.Status,
-            jogador.Disponibilidade,
-            jogador.ValorDeMercado,
-            jogador.FotoUrl,
-            jogador.Visivel,
-            TimeAtual = jogador.TimeAtual != null ? new
-            {
-                jogador.TimeAtual.Id,
-                jogador.TimeAtual.Nome,
-                jogador.TimeAtual.Pais
-            } : null,
-            Estatisticas = jogador.Estatisticas.Select(e => new
-            {
-                e.Id,
-                e.Periodo,
-                e.Rating,
-                e.KD,
-                e.PartidasJogadas
-            }).ToList()
-        };
+            var jogador = await _jogadorService.ObterJogadorPorIdAsync(id, ct);
+            
+            if (jogador == null)
+                return NotFound();
 
-        return Ok(resultado);
+            return Ok(jogador);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Erro ao obter jogador: {ex.Message}");
+        }
     }
 
     /// <summary>
     /// Atualiza as fotos dos jogadores existentes com URLs personalizadas
     /// </summary>
     [HttpPost("atualizar-fotos")]
+    [AuthorizeAdmin]
     public async Task<IActionResult> AtualizarFotos(CancellationToken ct)
     {
-        var jogadores = await _db.Jogadores.ToListAsync(ct);
-        
-        foreach (var jogador in jogadores)
+        try
         {
-            if (string.IsNullOrEmpty(jogador.FotoUrl))
-            {
-                jogador.FotoUrl = $"https://via.placeholder.com/300x300/1a1a1a/ffffff?text={Uri.EscapeDataString(jogador.Apelido)}";
-            }
+            var resultado = await _jogadorService.AtualizarFotosJogadoresAsync(ct);
+            return Ok(resultado);
         }
-        
-        await _db.SaveChangesAsync(ct);
-        
-        return Ok(new { message = $"Fotos atualizadas para {jogadores.Count} jogadores" });
+        catch (Exception ex)
+        {
+            return BadRequest($"Erro ao atualizar fotos: {ex.Message}");
+        }
     }
 
     /// <summary>
     /// Cria um novo jogador
     /// </summary>
     [HttpPost]
+    [AuthorizeOrganizacao]
+    [RequerAssinatura("gerenciar_jogadores")]
     public async Task<IActionResult> Criar([FromBody] CriarJogadorRequest request, CancellationToken ct)
     {
         try
         {
-            var jogador = new Jogador
-            {
-                Id = Guid.NewGuid(),
-                Apelido = request.Apelido,
-                Pais = request.Pais ?? "BR",
-                Idade = request.Idade,
-                FuncaoPrincipal = request.FuncaoPrincipal,
-                Status = request.Status,
-                Disponibilidade = request.Disponibilidade,
-                TimeAtualId = request.TimeAtualId,
-                ValorDeMercado = request.ValorDeMercado,
-                Visivel = true
-            };
-
-            _db.Jogadores.Add(jogador);
-            await _db.SaveChangesAsync(ct);
-
-            // Retornar dados sem referências circulares
-            var resultado = new
-            {
-                jogador.Id,
-                jogador.Apelido,
-                jogador.Pais,
-                jogador.Idade,
-                jogador.FuncaoPrincipal,
-                jogador.Status,
-                jogador.Disponibilidade,
-                jogador.ValorDeMercado,
-                jogador.Visivel,
-                TimeAtual = jogador.TimeAtual != null ? new
-                {
-                    jogador.TimeAtual.Id,
-                    jogador.TimeAtual.Nome,
-                    jogador.TimeAtual.Pais
-                } : null
-            };
-
-            return CreatedAtAction(nameof(Obter), new { id = jogador.Id }, resultado);
+            var resultado = await _jogadorService.CriarJogadorAsync(request, ct);
+            return CreatedAtAction(nameof(Obter), new { id = ((dynamic)resultado).Id }, resultado);
         }
         catch (Exception ex)
         {
@@ -209,12 +108,10 @@ public class JogadoresController : ControllerBase
     {
         try
         {
-            var jogador = await _db.Jogadores.FindAsync(id);
-            if (jogador == null)
+            var sucesso = await _jogadorService.AlterarVisibilidadeJogadorAsync(id, on, ct);
+            
+            if (!sucesso)
                 return NotFound();
-
-            jogador.Visivel = on;
-            await _db.SaveChangesAsync(ct);
 
             return Ok(new { message = $"Jogador {(on ? "tornado visível" : "ocultado")} com sucesso" });
         }

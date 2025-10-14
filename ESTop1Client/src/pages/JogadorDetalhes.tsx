@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, TrendingUp, Users, Target, Loader2 } from 'lucide-react';
 import { formatarMoeda, obterBandeiraPais } from '@/lib/utils';
-import playerPlaceholder from '@/assets/player-placeholder.jpg';
+import PlayerDefaultImage from '@/components/PlayerDefaultImage';
 
 const JogadorDetalhes = () => {
   const { id } = useParams<{ id: string }>();
@@ -75,8 +75,8 @@ const JogadorDetalhes = () => {
           <div className="lg:col-span-1">
             <Card className="overflow-hidden">
               <div className="aspect-square relative bg-gradient-dark">
-                <img 
-                  src={jogador.fotoUrl || playerPlaceholder} 
+                <PlayerDefaultImage 
+                  src={jogador.fotoUrl} 
                   alt={jogador.apelido}
                   className="w-full h-full object-cover"
                 />
@@ -102,8 +102,8 @@ const JogadorDetalhes = () => {
                     <span className="text-sm text-muted-foreground">Time Atual</span>
                     <span className="text-sm font-medium">
                       {jogador.timeAtual ? (
-                        <Link to={`/times/${jogador.timeAtualId}`} className="hover:text-primary">
-                          {jogador.timeAtual.nome}
+                        <Link to={`/times/${jogador.timeAtualId}`} className="hover:text-primary flex items-center gap-1">
+                          {obterBandeiraPais(jogador.timeAtual.pais)} {jogador.timeAtual.nome}
                         </Link>
                       ) : (
                         'Sem time'

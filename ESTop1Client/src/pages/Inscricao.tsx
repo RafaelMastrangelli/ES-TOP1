@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Target, Check } from 'lucide-react';
 import LoadingSpinner from '@/components/ui/loading-spinner';
+import { useAuth } from '@/hooks/useAuth';
 
 const Inscricao = () => {
   const [formData, setFormData] = useState<CriarInscricaoRequest>({
@@ -25,6 +26,14 @@ const Inscricao = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
+  // Redirecionar se já estiver autenticado
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleChange = (field: keyof CriarInscricaoRequest, value: any) => {
     setFormData(prev => ({
@@ -82,6 +91,15 @@ const Inscricao = () => {
     { value: 'AR', label: '🇦🇷 Argentina' },
     { value: 'CL', label: '🇨🇱 Chile' }
   ];
+
+  // Não renderizar se já estiver autenticado
+  if (isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

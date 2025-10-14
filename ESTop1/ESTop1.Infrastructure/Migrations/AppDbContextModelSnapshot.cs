@@ -17,6 +17,47 @@ namespace ESTop1.Infrastructure.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.9");
 
+            modelBuilder.Entity("ESTop1.Domain.Assinatura", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DataCancelamento")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataFim")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataInicio")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("IdTransacao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Plano")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("ValorMensal")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId", "Status");
+
+                    b.ToTable("Assinaturas");
+                });
+
             modelBuilder.Entity("ESTop1.Domain.Estatistica", b =>
                 {
                     b.Property<Guid>("Id")
@@ -59,6 +100,9 @@ namespace ESTop1.Infrastructure.Migrations
                     b.Property<int>("Disponibilidade")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("FotoUrl")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("FuncaoPrincipal")
                         .HasColumnType("INTEGER");
 
@@ -82,9 +126,6 @@ namespace ESTop1.Infrastructure.Migrations
                     b.Property<bool>("Visivel")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("FotoUrl")
-                        .HasColumnType("TEXT");
-
                     b.HasKey("Id");
 
                     b.HasIndex("Apelido");
@@ -92,6 +133,53 @@ namespace ESTop1.Infrastructure.Migrations
                     b.HasIndex("TimeAtualId");
 
                     b.ToTable("Jogadores");
+                });
+
+            modelBuilder.Entity("ESTop1.Domain.Plano", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("AcessoAPI")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("AcessoBuscaIA")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("AcessoEstatisticas")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("LimiteJogadores")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("SuportePrioritario")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("ValorMensal")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Tipo")
+                        .IsUnique();
+
+                    b.ToTable("Planos");
                 });
 
             modelBuilder.Entity("ESTop1.Domain.Time", b =>
@@ -111,6 +199,62 @@ namespace ESTop1.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Times");
+                });
+
+            modelBuilder.Entity("ESTop1.Domain.Usuario", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SenhaHash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("TimeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UltimoLogin")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("TimeId");
+
+                    b.ToTable("Usuarios");
+                });
+
+            modelBuilder.Entity("ESTop1.Domain.Assinatura", b =>
+                {
+                    b.HasOne("ESTop1.Domain.Usuario", "Usuario")
+                        .WithMany("Assinaturas")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("ESTop1.Domain.Estatistica", b =>
@@ -133,6 +277,15 @@ namespace ESTop1.Infrastructure.Migrations
                     b.Navigation("TimeAtual");
                 });
 
+            modelBuilder.Entity("ESTop1.Domain.Usuario", b =>
+                {
+                    b.HasOne("ESTop1.Domain.Time", "Time")
+                        .WithMany()
+                        .HasForeignKey("TimeId");
+
+                    b.Navigation("Time");
+                });
+
             modelBuilder.Entity("ESTop1.Domain.Jogador", b =>
                 {
                     b.Navigation("Estatisticas");
@@ -141,6 +294,11 @@ namespace ESTop1.Infrastructure.Migrations
             modelBuilder.Entity("ESTop1.Domain.Time", b =>
                 {
                     b.Navigation("Jogadores");
+                });
+
+            modelBuilder.Entity("ESTop1.Domain.Usuario", b =>
+                {
+                    b.Navigation("Assinaturas");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,8 +1,9 @@
+using ESTop1.Api.Attributes;
 using ESTop1.Api.DTOs;
-using ESTop1.Domain;
-using ESTop1.Infrastructure;
+using ESTop1.Api.Middleware;
+using ESTop1.Domain.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace ESTop1.Api.Controllers;
 
@@ -13,64 +14,67 @@ namespace ESTop1.Api.Controllers;
 [Route("api/times")]
 public class TimesController : ControllerBase
 {
-    private readonly AppDbContext _db;
-    public TimesController(AppDbContext db) => _db = db;
+    private readonly ITimeService _timeService;
+    
+    public TimesController(ITimeService timeService)
+    {
+        _timeService = timeService;
+    }
 
     /// <summary>
     /// Lista todos os times
     /// </summary>
     [HttpGet]
+    [Authorize]
+    [RequerAssinatura("buscar_times")]
     public async Task<IActionResult> Listar(CancellationToken ct)
     {
-        var times = await _db.Times.AsNoTracking()
-            .Include(t => t.Jogadores)
-            .Select(t => new
-            {
-                t.Id,
-                t.Nome,
-                t.Pais,
-                QuantidadeJogadores = t.Jogadores.Count
-            })
-            .ToListAsync(ct);
-
-        return Ok(times);
+        try
+        {
+            var times = await _timeService.ListarTimesAsync(ct);
+            return Ok(times);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Erro ao listar times: {ex.Message}");
+        }
     }
 
     /// <summary>
     /// Obtém detalhes de um time específico
     /// </summary>
     [HttpGet("{id}")]
+    [Authorize]
+    [RequerAssinatura("buscar_times")]
     public async Task<IActionResult> Obter(Guid id, CancellationToken ct)
     {
-        var time = await _db.Times.AsNoTracking()
-            .Include(t => t.Jogadores)
-            .FirstOrDefaultAsync(t => t.Id == id, ct);
+        try
+        {
+            var time = await _timeService.ObterTimePorIdAsync(id, ct);
+            
+            if (time == null)
+                return NotFound();
 
-        if (time == null)
-            return NotFound();
-
-        return Ok(time);
+            return Ok(time);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Erro ao obter time: {ex.Message}");
+        }
     }
 
     /// <summary>
     /// Cria um novo time
     /// </summary>
     [HttpPost]
+    [AuthorizeOrganizacao]
+    [RequerAssinatura("gerenciar_jogadores")]
     public async Task<IActionResult> Criar([FromBody] CriarTimeRequest request, CancellationToken ct)
     {
         try
         {
-            var time = new Time
-            {
-                Id = Guid.NewGuid(),
-                Nome = request.Nome,
-                Pais = request.Pais ?? "BR"
-            };
-
-            _db.Times.Add(time);
-            await _db.SaveChangesAsync(ct);
-
-            return CreatedAtAction(nameof(Obter), new { id = time.Id }, time);
+            var resultado = await _timeService.CriarTimeAsync(request, ct);
+            return CreatedAtAction(nameof(Obter), new { id = ((dynamic)resultado).Id }, resultado);
         }
         catch (Exception ex)
         {
