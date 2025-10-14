@@ -23,7 +23,7 @@ const Index = () => {
         <div className="container mx-auto px-4 relative z-10 text-center">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-fade-in">
             <span className="text-white">
-              ES-Top1
+              ES-TOP1
             </span>
           </h1>
           <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-2xl mx-auto animate-fade-in">
@@ -122,7 +122,7 @@ const Index = () => {
             Pronto para começar?
           </h2>
           <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-            Cadastre-se agora e tenha acesso completo à maior biblioteca de jogadores profissionais de CS2.
+            Cadastre-se agora e tenha acesso completo à maior plataforma de vendas de jogadores profissionais de CS2.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" variant="secondary" asChild>
@@ -143,7 +143,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="py-8 border-t">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>&copy; 2025 ESTop1. Todos os direitos reservados.</p>
+          <p>&copy; 2025 ES-TOP1. Todos os direitos reservados.</p>
         </div>
       </footer>
     </div>

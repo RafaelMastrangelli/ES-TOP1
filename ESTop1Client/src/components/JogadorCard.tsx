@@ -55,7 +55,7 @@ const JogadorCard = ({ jogador }: JogadorCardProps) => {
       <Card className="overflow-hidden transition-all hover:shadow-lg hover:scale-[1.02] hover:border-primary">
         <div className="aspect-square relative bg-gradient-dark">
           <img 
-            src={playerPlaceholder} 
+            src={jogador.fotoUrl || playerPlaceholder} 
             alt={jogador.apelido}
             className="w-full h-full object-cover opacity-80"
           />

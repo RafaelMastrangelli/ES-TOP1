@@ -82,6 +82,9 @@ namespace ESTop1.Infrastructure.Migrations
                     b.Property<bool>("Visivel")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("FotoUrl")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Apelido");

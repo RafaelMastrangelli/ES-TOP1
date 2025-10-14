@@ -17,6 +17,8 @@ const Jogadores = () => {
 
   const [faceitData, setFaceitData] = useState<FaceitSearchResult | null>(null);
   const [isLoadingFaceit, setIsLoadingFaceit] = useState(false);
+  const [aiData, setAiData] = useState<any>(null);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['jogadores', filtros],
@@ -40,6 +42,10 @@ const Jogadores = () => {
   };
 
   const handleFaceitSearch = async (nickname: string) => {
+    // Limpar resultados anteriores
+    setAiData(null);
+    setIsLoadingAI(false);
+    
     setIsLoadingFaceit(true);
     try {
       const result = await api.faceit.buscarDadosCompletos(nickname);
@@ -54,6 +60,34 @@ const Jogadores = () => {
 
   const handleCloseFaceit = () => {
     setFaceitData(null);
+  };
+
+  const handleAISearch = async (consulta: string) => {
+    // Limpar resultados anteriores
+    setFaceitData(null);
+    setIsLoadingFaceit(false);
+    
+    setIsLoadingAI(true);
+    try {
+      const result = await api.openai.buscarJogadores(consulta);
+      setAiData(result);
+    } catch (error) {
+      console.error('Erro ao buscar com IA:', error);
+      setAiData({ jogadores: [], total: 0, consultaOriginal: consulta, consultaIA: '' });
+    } finally {
+      setIsLoadingAI(false);
+    }
+  };
+
+  const handleCloseAI = () => {
+    setAiData(null);
+  };
+
+  const handleClearAllResults = () => {
+    setFaceitData(null);
+    setAiData(null);
+    setIsLoadingFaceit(false);
+    setIsLoadingAI(false);
   };
 
   return (
@@ -71,8 +105,13 @@ const Jogadores = () => {
         <div className="space-y-6">
           <FiltrosJogadores 
             filtros={filtros} 
-            onChange={setFiltros} 
+            onChange={(newFiltros) => {
+              // Limpar resultados de outras buscas quando fazer busca local
+              handleClearAllResults();
+              setFiltros(newFiltros);
+            }}
             onFaceitSearch={handleFaceitSearch}
+            onAISearch={handleAISearch}
           />
 
           {/* Loading FACEIT */}
@@ -80,6 +119,14 @@ const Jogadores = () => {
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
               <span>Buscando dados na FACEIT...</span>
+            </div>
+          )}
+
+          {/* Loading IA */}
+          {isLoadingAI && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-purple-500 mr-2" />
+              <span>Processando consulta com IA...</span>
             </div>
           )}
 
@@ -94,6 +141,36 @@ const Jogadores = () => {
                 </Button>
               </div>
               <FaceitPlayerCard data={faceitData} onClose={handleCloseFaceit} />
+            </div>
+          )}
+
+          {/* Dados IA */}
+          {aiData && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-purple-600">Resultado da Busca com IA</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Consulta: "{aiData.consultaOriginal}" • {aiData.total} jogador(es) encontrado(s)
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleCloseAI}>
+                  <X className="h-4 w-4 mr-2" />
+                  Fechar
+                </Button>
+              </div>
+              
+              {aiData.jogadores.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {aiData.jogadores.map((jogador: any) => (
+                    <JogadorCard key={jogador.id} jogador={jogador} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Nenhum jogador encontrado com a consulta da IA.</p>
+                </div>
+              )}
             </div>
           )}
 

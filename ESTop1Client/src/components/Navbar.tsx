@@ -8,7 +8,7 @@ const Navbar = () => {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link to="/" className="flex items-center gap-2 font-bold text-xl">
           <Target className="h-6 w-6 text-primary" />
-          <span className="bg-gradient-primary bg-clip-text text-transparent">ESTop1</span>
+          <span className="bg-gradient-primary bg-clip-text text-transparent">ES-TOP1</span>
         </Link>
 
         <div className="hidden md:flex items-center gap-6">

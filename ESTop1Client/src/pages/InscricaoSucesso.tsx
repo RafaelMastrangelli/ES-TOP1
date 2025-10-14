@@ -32,7 +32,7 @@ const InscricaoSucesso = () => {
             <CardContent className="space-y-6">
               <div className="text-center space-y-4">
                 <p className="text-muted-foreground">
-                  Obrigado por se inscrever na ESTop1! Sua inscrição está sendo analisada pela nossa equipe.
+                  Obrigado por se inscrever na ES-TOP1! Sua inscrição está sendo analisada pela nossa equipe.
                 </p>
                 
                 {inscricaoId && (

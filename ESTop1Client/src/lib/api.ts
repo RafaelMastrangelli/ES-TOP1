@@ -9,7 +9,8 @@ import {
   ApiResponse,
   FaceitPlayer,
   FaceitStats,
-  FaceitMatch
+  FaceitMatch,
+  FaceitSearchResult
 } from '@/types';
 
 const API_BASE_URL = 'http://localhost:5059/api';
@@ -120,6 +121,58 @@ export const api = {
 
     buscarPartidas: async (playerId: string, limite: number = 5): Promise<FaceitMatch[]> => {
       return request<FaceitMatch[]>(`${API_BASE_URL}/integracoes/faceit/partidas/${playerId}?limite=${limite}`);
+    },
+
+    buscarDadosCompletos: async (nickname: string): Promise<FaceitSearchResult> => {
+      try {
+        // Buscar jogador pelo nickname
+        const player = await request<FaceitPlayer>(`${API_BASE_URL}/integracoes/faceit/jogador/${encodeURIComponent(nickname)}`);
+        
+        if (!player) {
+          return { player: null, stats: null, matches: [] };
+        }
+
+        // Buscar estatísticas e partidas em paralelo
+        const [stats, matches] = await Promise.allSettled([
+          request<FaceitStats>(`${API_BASE_URL}/integracoes/faceit/estatisticas/${player.playerId}`),
+          request<FaceitMatch[]>(`${API_BASE_URL}/integracoes/faceit/partidas/${player.playerId}?limite=5`)
+        ]);
+
+        return {
+          player,
+          stats: stats.status === 'fulfilled' ? stats.value : null,
+          matches: matches.status === 'fulfilled' ? matches.value : []
+        };
+      } catch (error) {
+        console.error('Erro ao buscar dados completos FACEIT:', error);
+        return { player: null, stats: null, matches: [] };
+      }
+    },
+  },
+
+  openai: {
+    buscarJogadores: async (consulta: string): Promise<{
+      jogadores: any[];
+      total: number;
+      consultaOriginal: string;
+      consultaIA: string;
+    }> => {
+      return request<{
+        jogadores: any[];
+        total: number;
+        consultaOriginal: string;
+        consultaIA: string;
+      }>(`${API_BASE_URL}/integracoes/openai/buscar-jogadores?consulta=${encodeURIComponent(consulta)}`);
+    },
+
+    sugerirFiltros: async (descricao: string): Promise<{
+      filtros: any;
+      descricaoOriginal: string;
+    }> => {
+      return request<{
+        filtros: any;
+        descricaoOriginal: string;
+      }>(`${API_BASE_URL}/integracoes/openai/sugerir-filtros?descricao=${encodeURIComponent(descricao)}`);
     },
   },
 };

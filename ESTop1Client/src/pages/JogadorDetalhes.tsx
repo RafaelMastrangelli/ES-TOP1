@@ -76,7 +76,7 @@ const JogadorDetalhes = () => {
             <Card className="overflow-hidden">
               <div className="aspect-square relative bg-gradient-dark">
                 <img 
-                  src={playerPlaceholder} 
+                  src={jogador.fotoUrl || playerPlaceholder} 
                   alt={jogador.apelido}
                   className="w-full h-full object-cover"
                 />

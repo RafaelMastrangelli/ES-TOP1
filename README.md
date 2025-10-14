@@ -48,6 +48,26 @@ npm run dev
 ```
 **URL**: `http://localhost:5173`
 
+## ⚙️ Configuração
+
+### OpenAI API
+Para usar a busca inteligente, configure a chave da API do OpenAI:
+
+1. **Variável de ambiente** (recomendado):
+   ```bash
+   export OPENAI_API_KEY="sua-chave-aqui"
+   ```
+
+2. **Arquivo de configuração**:
+   Edite `ESTop1/appsettings.json` e adicione sua chave:
+   ```json
+   {
+     "OpenAI": {
+       "ApiKey": "sua-chave-aqui"
+     }
+   }
+   ```
+
 ## 🔧 Funcionalidades
 
 ### ✅ Implementadas
@@ -56,6 +76,7 @@ npm run dev
 - **Gestão de Times** (CRUD completo)
 - **Sistema de Inscrições** para aspirantes
 - **Integração FACEIT API** (busca de jogadores)
+- **Integração OpenAI** (busca inteligente por IA)
 - **Interface Responsiva** (Mobile/Desktop)
 - **Filtros e Paginação**
 
@@ -79,17 +100,31 @@ npm run dev
 - `GET /api/integracoes/faceit/estatisticas/{playerId}` - Estatísticas
 - `GET /api/integracoes/faceit/partidas/{playerId}` - Histórico de partidas
 
-## 🎯 Próximos Passos
+#### OpenAI Integration
+- `GET /api/integracoes/openai/buscar-jogadores?consulta={texto}` - Busca inteligente
+- `GET /api/integracoes/openai/sugerir-filtros?descricao={texto}` - Sugerir filtros
 
-- [ ] Deploy em produção
-- [ ] Sistema de notificações
-- [ ] Chat entre jogadores
-- [ ] Sistema de torneios
-- [ ] Dashboard administrativo
+### 🤖 Busca Inteligente com IA
+
+A nova funcionalidade permite buscar jogadores usando linguagem natural:
+
+**Exemplos de consultas:**
+- "melhor AWP brasileiro"
+- "jogador entry agressivo jovem"
+- "IGL experiente disponível"
+- "suporte brasileiro com alta rating"
+- "jogador lurker aposentado"
+
+**Como usar:**
+1. Acesse a página de Jogadores
+2. Use o campo "Buscar com IA" 
+3. Digite sua consulta em linguagem natural
+4. A IA analisará todos os jogadores e retornará os mais relevantes
+
 
 ## 📝 Licença
 
-Este projeto é de uso pessoal/educacional.
+Este projeto é de uso pessoal.
 
 ---
 

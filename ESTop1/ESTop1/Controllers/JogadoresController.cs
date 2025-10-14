@@ -73,6 +73,7 @@ public class JogadoresController : ControllerBase
                 j.Status,
                 j.Disponibilidade,
                 j.ValorDeMercado,
+                j.FotoUrl,
                 RatingGeral = j.Estatisticas.Where(e => e.Periodo == "Geral").Select(e => e.Rating).FirstOrDefault()
             })
             .ToListAsync(ct);
@@ -94,7 +95,57 @@ public class JogadoresController : ControllerBase
         if (jogador == null)
             return NotFound();
 
-        return Ok(jogador);
+        // Retornar dados sem referências circulares
+        var resultado = new
+        {
+            jogador.Id,
+            jogador.Apelido,
+            jogador.Pais,
+            jogador.Idade,
+            jogador.FuncaoPrincipal,
+            jogador.Status,
+            jogador.Disponibilidade,
+            jogador.ValorDeMercado,
+            jogador.FotoUrl,
+            jogador.Visivel,
+            TimeAtual = jogador.TimeAtual != null ? new
+            {
+                jogador.TimeAtual.Id,
+                jogador.TimeAtual.Nome,
+                jogador.TimeAtual.Pais
+            } : null,
+            Estatisticas = jogador.Estatisticas.Select(e => new
+            {
+                e.Id,
+                e.Periodo,
+                e.Rating,
+                e.KD,
+                e.PartidasJogadas
+            }).ToList()
+        };
+
+        return Ok(resultado);
+    }
+
+    /// <summary>
+    /// Atualiza as fotos dos jogadores existentes com URLs personalizadas
+    /// </summary>
+    [HttpPost("atualizar-fotos")]
+    public async Task<IActionResult> AtualizarFotos(CancellationToken ct)
+    {
+        var jogadores = await _db.Jogadores.ToListAsync(ct);
+        
+        foreach (var jogador in jogadores)
+        {
+            if (string.IsNullOrEmpty(jogador.FotoUrl))
+            {
+                jogador.FotoUrl = $"https://via.placeholder.com/300x300/1a1a1a/ffffff?text={Uri.EscapeDataString(jogador.Apelido)}";
+            }
+        }
+        
+        await _db.SaveChangesAsync(ct);
+        
+        return Ok(new { message = $"Fotos atualizadas para {jogadores.Count} jogadores" });
     }
 
     /// <summary>
@@ -122,7 +173,27 @@ public class JogadoresController : ControllerBase
             _db.Jogadores.Add(jogador);
             await _db.SaveChangesAsync(ct);
 
-            return CreatedAtAction(nameof(Obter), new { id = jogador.Id }, jogador);
+            // Retornar dados sem referências circulares
+            var resultado = new
+            {
+                jogador.Id,
+                jogador.Apelido,
+                jogador.Pais,
+                jogador.Idade,
+                jogador.FuncaoPrincipal,
+                jogador.Status,
+                jogador.Disponibilidade,
+                jogador.ValorDeMercado,
+                jogador.Visivel,
+                TimeAtual = jogador.TimeAtual != null ? new
+                {
+                    jogador.TimeAtual.Id,
+                    jogador.TimeAtual.Nome,
+                    jogador.TimeAtual.Pais
+                } : null
+            };
+
+            return CreatedAtAction(nameof(Obter), new { id = jogador.Id }, resultado);
         }
         catch (Exception ex)
         {

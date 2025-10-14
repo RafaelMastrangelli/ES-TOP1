@@ -29,6 +29,7 @@ export interface Jogador {
   timeAtualId?: string;
   timeAtual?: Time;
   valorDeMercado: number;
+  fotoUrl?: string;
   visivel: boolean;
   estatisticas?: Estatistica[];
   ratingGeral?: number;

@@ -13,7 +13,7 @@ public static class DependencyInjection
     {
         // Banco de dados
         services.AddDbContext<AppDbContext>(opt =>
-            opt.UseSqlite(config.GetConnectionString("Padrao")));
+            opt.UseSqlite(config.GetConnectionString("Padrao"), b => b.MigrationsAssembly("ESTop1.Infrastructure")));
 
         // FACEIT API
         services.AddHttpClient<IFaceitService, FaceitService>(client =>

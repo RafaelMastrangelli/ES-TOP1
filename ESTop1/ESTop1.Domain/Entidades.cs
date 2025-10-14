@@ -24,6 +24,7 @@ public class Jogador
     public Guid? TimeAtualId { get; set; }
     public Time? TimeAtual { get; set; }
     public decimal ValorDeMercado { get; set; }
+    public string? FotoUrl { get; set; }
     public bool Visivel { get; set; } = true;
     public List<Estatistica> Estatisticas { get; set; } = new();
 }
