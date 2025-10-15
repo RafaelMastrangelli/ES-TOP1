@@ -1,5 +1,8 @@
 import React from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Loader2, Lock, Crown, HelpCircle } from 'lucide-react';
 import PerfilJogador from './PerfilJogador';
 import PerfilOrganizacao from './PerfilOrganizacao';
 
@@ -8,10 +11,10 @@ const Perfil: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando...</p>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Carregando perfil...</p>
         </div>
       </div>
     );
@@ -19,20 +22,28 @@ const Perfil: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
-          <div className="text-gray-400 text-6xl mb-4">🔒</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Acesso Negado</h2>
-          <p className="text-gray-600 mb-6">
-            Você precisa estar logado para acessar seu perfil.
-          </p>
-          <button 
-            onClick={() => window.location.href = '/login'}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium"
-          >
-            Fazer Login
-          </button>
-        </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="w-full max-w-md animate-fade-in">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="p-4 rounded-full bg-muted">
+                <Lock className="h-12 w-12 text-muted-foreground" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl">Acesso Negado</CardTitle>
+            <CardDescription>
+              Você precisa estar logado para acessar seu perfil.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={() => window.location.href = '/login'}
+              className="w-full"
+            >
+              Fazer Login
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -45,46 +56,61 @@ const Perfil: React.FC = () => {
       return <PerfilOrganizacao />;
     case 'Admin':
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center max-w-md mx-auto p-6">
-            <div className="text-gray-400 text-6xl mb-4">👑</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Painel Administrativo</h2>
-            <p className="text-gray-600 mb-6">
-              Você tem acesso administrativo ao sistema.
-            </p>
-            <div className="space-y-3">
-              <button 
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <Card className="w-full max-w-md animate-fade-in">
+            <CardHeader className="text-center">
+              <div className="flex justify-center mb-4">
+                <div className="p-4 rounded-full bg-primary/10">
+                  <Crown className="h-12 w-12 text-primary" />
+                </div>
+              </div>
+              <CardTitle className="text-2xl">Painel Administrativo</CardTitle>
+              <CardDescription>
+                Você tem acesso administrativo ao sistema.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button 
                 onClick={() => window.location.href = '/admin'}
-                className="w-full bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 font-medium"
+                variant="destructive"
+                className="w-full"
               >
                 Painel Admin
-              </button>
-              <button 
+              </Button>
+              <Button 
                 onClick={() => window.location.href = '/times'}
-                className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium"
+                className="w-full"
               >
                 Gerenciar Times
-              </button>
-            </div>
-          </div>
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       );
     default:
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center max-w-md mx-auto p-6">
-            <div className="text-gray-400 text-6xl mb-4">❓</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Tipo de Usuário Inválido</h2>
-            <p className="text-gray-600 mb-6">
-              Seu tipo de usuário não é reconhecido pelo sistema.
-            </p>
-            <button 
-              onClick={() => window.location.href = '/'}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium"
-            >
-              Voltar ao Início
-            </button>
-          </div>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <Card className="w-full max-w-md animate-fade-in">
+            <CardHeader className="text-center">
+              <div className="flex justify-center mb-4">
+                <div className="p-4 rounded-full bg-muted">
+                  <HelpCircle className="h-12 w-12 text-muted-foreground" />
+                </div>
+              </div>
+              <CardTitle className="text-2xl">Tipo de Usuário Inválido</CardTitle>
+              <CardDescription>
+                Seu tipo de usuário não é reconhecido pelo sistema.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                onClick={() => window.location.href = '/'}
+                className="w-full"
+              >
+                Voltar ao Início
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       );
   }

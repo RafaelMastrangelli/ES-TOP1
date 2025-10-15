@@ -141,4 +141,53 @@ public class TimeService : ITimeService
         var timeCriado = await _timeRepository.CriarAsync(time, cancellationToken);
         return timeCriado;
     }
+
+    public async Task<object?> AtualizarTimeAsync(Guid usuarioId, object requestObj, CancellationToken cancellationToken = default)
+    {
+        var request = (dynamic)requestObj;
+        
+        // Buscar o time associado ao usuário
+        var usuario = await _context.Usuarios
+            .Include(u => u.Time)
+            .FirstOrDefaultAsync(u => u.Id == usuarioId, cancellationToken);
+        
+        if (usuario?.Time == null) return null;
+        
+        var time = await _context.Times
+            .Include(t => t.Jogadores)
+            .FirstOrDefaultAsync(t => t.Id == usuario.TimeId, cancellationToken);
+        
+        if (time == null) return null;
+
+        // Atualizar apenas os campos fornecidos
+        if (request.Nome != null) time.Nome = request.Nome;
+        if (request.Pais != null) time.Pais = request.Pais;
+        if (request.Tier.HasValue) time.Tier = request.Tier;
+        if (request.Contratando.HasValue) time.Contratando = request.Contratando;
+        if (request.LogoUrl != null) time.LogoUrl = request.LogoUrl;
+
+        var timeAtualizado = await _timeRepository.AtualizarAsync(time, cancellationToken);
+
+        return new
+        {
+            timeAtualizado.Id,
+            timeAtualizado.Nome,
+            timeAtualizado.Pais,
+            timeAtualizado.Tier,
+            timeAtualizado.Contratando,
+            timeAtualizado.LogoUrl,
+            Jogadores = timeAtualizado.Jogadores.Select(j => new
+            {
+                j.Id,
+                j.Apelido,
+                j.Pais,
+                j.Idade,
+                j.FuncaoPrincipal,
+                j.Status,
+                j.Disponibilidade,
+                j.ValorDeMercado,
+                j.FotoUrl
+            }).ToList()
+        };
+    }
 }

@@ -1,7 +1,7 @@
 namespace ESTop1.Domain;
 
 public enum StatusJogador { Profissional, Aposentado, Amador }
-public enum Disponibilidade { Contratado, Livre }
+public enum Disponibilidade { EmTime, Livre, Teste }
 public enum Funcao { Entry, Suporte, Awp, Igl, Lurker }
 public enum TipoUsuario 
 { 
@@ -19,6 +19,7 @@ public class Time
     public string Pais { get; set; } = "BR";
     public int? Tier { get; set; }
     public bool? Contratando { get; set; }
+    public string? LogoUrl { get; set; }
     public List<Jogador> Jogadores { get; set; } = new();
 }
 

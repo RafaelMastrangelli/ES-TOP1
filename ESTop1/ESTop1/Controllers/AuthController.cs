@@ -58,15 +58,20 @@ public class AuthController : ControllerBase
                 });
             }
 
+            Console.WriteLine($"Tentativa de login para email: {request.Email}");
+            
             var usuario = await _authService.ValidarCredenciaisAsync(request.Email, request.Senha);
             if (usuario == null)
             {
+                Console.WriteLine($"Usuário não encontrado ou credenciais inválidas para: {request.Email}");
                 return Unauthorized(new ErrorResponse
                 {
                     Message = "Email ou senha incorretos",
                     ErrorCode = "INVALID_CREDENTIALS"
                 });
             }
+            
+            Console.WriteLine($"Usuário encontrado: {usuario.Nome} ({usuario.Email})");
 
             // Verificar se o usuário está ativo
             if (!usuario.Ativo)
@@ -232,6 +237,7 @@ public class AuthController : ControllerBase
             }
 
             var token = await _authService.GerarTokenAsync(usuario);
+            var assinatura = await _assinaturaService.ObterAssinaturaAtivaAsync(usuario.Id);
 
             var response = new LoginResponse
             {
@@ -244,7 +250,16 @@ public class AuthController : ControllerBase
                     Tipo = usuario.Tipo.ToString(),
                     DataCriacao = usuario.DataCriacao,
                     UltimoLogin = usuario.UltimoLogin
-                }
+                },
+                Assinatura = assinatura != null ? new AssinaturaResponse
+                {
+                    Id = assinatura.Id,
+                    Plano = assinatura.Plano.ToString(),
+                    Status = assinatura.Status.ToString(),
+                    DataInicio = assinatura.DataInicio,
+                    DataFim = assinatura.DataFim,
+                    ValorMensal = assinatura.ValorMensal
+                } : null
             };
 
             return Ok(response);
@@ -277,19 +292,24 @@ public class AuthController : ControllerBase
     {
         try
         {
+            Console.WriteLine($"AuthController: ObterUsuarioAtual chamado");
+            
             var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+            Console.WriteLine($"AuthController: UserId: {userId}");
+            
             var assinatura = await _assinaturaService.ObterAssinaturaAtivaAsync(userId);
+            Console.WriteLine($"AuthController: Assinatura encontrada: {assinatura != null}");
 
             var response = new
             {
-                Usuario = new UsuarioResponse
+                usuario = new UsuarioResponse
                 {
                     Id = userId,
                     Nome = User.FindFirst(System.Security.Claims.ClaimTypes.Name)!.Value,
                     Email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)!.Value,
                     Tipo = User.FindFirst("TipoUsuario")!.Value
                 },
-                Assinatura = assinatura != null ? new AssinaturaResponse
+                assinatura = assinatura != null ? new AssinaturaResponse
                 {
                     Id = assinatura.Id,
                     Plano = assinatura.Plano.ToString(),
@@ -300,11 +320,30 @@ public class AuthController : ControllerBase
                 } : null
             };
 
+            Console.WriteLine($"AuthController: Resposta criada, retornando...");
             return Ok(response);
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"AuthController: Erro ao obter dados do usuário: {ex.Message}");
             return BadRequest($"Erro ao obter dados do usuário: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// DEBUG: Verifica se um usuário existe no banco
+    /// </summary>
+    [HttpGet("debug/usuario/{email}")]
+    public async Task<IActionResult> DebugUsuario(string email)
+    {
+        try
+        {
+            var usuario = await _authService.VerificarEmailExisteAsync(email);
+            return Ok(new { email, existe = usuario });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Erro ao verificar usuário: {ex.Message}");
         }
     }
 

@@ -11,4 +11,5 @@ public interface ITimeService
     Task<object?> ObterTimePorIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<object?> ObterTimePorUsuarioIdAsync(Guid usuarioId, CancellationToken cancellationToken = default);
     Task<object> CriarTimeAsync(object request, CancellationToken cancellationToken = default);
+    Task<object?> AtualizarTimeAsync(Guid usuarioId, object request, CancellationToken cancellationToken = default);
 }

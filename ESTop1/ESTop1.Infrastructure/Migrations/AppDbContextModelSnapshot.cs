@@ -191,6 +191,9 @@ namespace ESTop1.Infrastructure.Migrations
                     b.Property<bool?>("Contratando")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("LogoUrl")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasColumnType("TEXT");

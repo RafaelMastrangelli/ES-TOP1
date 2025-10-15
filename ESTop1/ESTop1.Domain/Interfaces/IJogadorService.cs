@@ -12,6 +12,7 @@ public interface IJogadorService
     Task<object?> ObterJogadorPorUsuarioIdAsync(Guid usuarioId, CancellationToken cancellationToken = default);
     Task<object> CriarJogadorAsync(object request, CancellationToken cancellationToken = default);
     Task<object> CriarJogadorParaUsuarioAsync(Guid usuarioId, string nome, CancellationToken cancellationToken = default);
+    Task<object?> AtualizarJogadorAsync(Guid usuarioId, object request, CancellationToken cancellationToken = default);
     Task<bool> AlterarVisibilidadeJogadorAsync(Guid id, bool visivel, CancellationToken cancellationToken = default);
     Task<object> AtualizarFotosJogadoresAsync(CancellationToken cancellationToken = default);
 }

@@ -139,7 +139,7 @@ public class OpenAIController : ControllerBase
                 Idade = dadosIA.Idade,
                 FuncaoPrincipal = Enum.Parse<Funcao>(dadosIA.FuncaoPrincipal),
                 Status = Enum.Parse<StatusJogador>(dadosIA.Status),
-                Disponibilidade = string.IsNullOrEmpty(dadosIA.TimeAtual) ? Disponibilidade.Livre : Disponibilidade.Contratado,
+                Disponibilidade = string.IsNullOrEmpty(dadosIA.TimeAtual) ? Disponibilidade.Livre : Disponibilidade.EmTime,
                 ValorDeMercado = dadosIA.ValorDeMercado,
                 FotoUrl = "/player-default.jpg", // Imagem padrão temporária
                 Visivel = true

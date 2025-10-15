@@ -17,6 +17,7 @@ export interface Time {
   pais: string;
   tier?: number;
   contratando?: boolean;
+  logoUrl?: string;
   jogadores?: Jogador[];
 }
 

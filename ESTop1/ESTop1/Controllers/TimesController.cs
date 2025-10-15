@@ -107,5 +107,31 @@ public class TimesController : ControllerBase
             return BadRequest($"Erro ao criar time: {ex.Message}");
         }
     }
+
+    /// <summary>
+    /// Atualiza o time da organização logada
+    /// </summary>
+    [HttpPut("meu-time")]
+    [AuthorizeOrganizacao]
+    public async Task<IActionResult> AtualizarMeuTime([FromBody] AtualizarTimeRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var userId = User.FindFirst("user_id")?.Value;
+            if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userIdGuid))
+                return Unauthorized();
+
+            var resultado = await _timeService.AtualizarTimeAsync(userIdGuid, request, ct);
+            
+            if (resultado == null)
+                return NotFound("Time não encontrado para esta organização");
+
+            return Ok(resultado);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Erro ao atualizar time: {ex.Message}");
+        }
+    }
 }
 

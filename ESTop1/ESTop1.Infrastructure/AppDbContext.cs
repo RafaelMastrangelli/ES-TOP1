@@ -134,7 +134,62 @@ public class AppDbContext : DbContext
             Ativo = true
         };
 
+        // Criar usuário de teste
+        var usuarioTeste = new Usuario
+        {
+            Id = Guid.NewGuid(),
+            Nome = "Usuário Teste",
+            Email = "teste23@email",
+            SenhaHash = BCrypt.Net.BCrypt.HashPassword("123456"),
+            Tipo = TipoUsuario.Jogador,
+            Ativo = true
+        };
+
         db.Usuarios.Add(admin);
+        db.Usuarios.Add(usuarioTeste);
+
+        // Criar assinatura gratuita para o usuário de teste
+        var assinaturaTeste = new Assinatura
+        {
+            Id = Guid.NewGuid(),
+            UsuarioId = usuarioTeste.Id,
+            Plano = PlanoAssinatura.Gratuito,
+            Status = StatusAssinatura.Ativa,
+            DataInicio = DateTime.UtcNow,
+            DataFim = DateTime.UtcNow.AddYears(1),
+            ValorMensal = 0
+        };
+
+        db.Assinaturas.Add(assinaturaTeste);
+
+        // Criar jogador para o usuário de teste
+        var jogadorTeste = new Jogador
+        {
+            Id = usuarioTeste.Id, // Usar o mesmo ID do usuário
+            Apelido = "TestePlayer",
+            Pais = "BR",
+            Idade = 20,
+            FuncaoPrincipal = Funcao.Entry,
+            Status = StatusJogador.Amador,
+            Disponibilidade = Disponibilidade.Livre,
+            ValorDeMercado = 10000,
+            Visivel = true
+        };
+
+        db.Jogadores.Add(jogadorTeste);
+
+        // Criar estatísticas para o jogador de teste
+        var estatisticaTeste = new Estatistica
+        {
+            Id = Guid.NewGuid(),
+            JogadorId = jogadorTeste.Id,
+            Periodo = "Geral",
+            Rating = 1.0m,
+            KD = 1.0m,
+            PartidasJogadas = 100
+        };
+
+        db.Estatisticas.Add(estatisticaTeste);
 
         // Criar time
         var time = new Time { Id = Guid.NewGuid(), Nome = "Bauru Stars", Pais = "BR" };
@@ -149,7 +204,7 @@ public class AppDbContext : DbContext
             Idade = 24,
             FuncaoPrincipal = Funcao.Entry,
             Status = StatusJogador.Profissional,
-            Disponibilidade = Disponibilidade.Contratado,
+            Disponibilidade = Disponibilidade.EmTime,
             TimeAtualId = time.Id,
             Visivel = true
         };

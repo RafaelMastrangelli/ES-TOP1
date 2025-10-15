@@ -185,6 +185,45 @@ public class JogadoresController : ControllerBase
     }
 
     /// <summary>
+    /// Atualiza o perfil do jogador logado
+    /// </summary>
+    [HttpPut("meu-perfil")]
+    [AuthorizeJogador]
+    public async Task<IActionResult> AtualizarMeuPerfil([FromBody] AtualizarJogadorRequest dados, CancellationToken ct)
+    {
+        try
+        {
+            var userId = User.FindFirst("user_id")?.Value;
+            if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userIdGuid))
+                return Unauthorized();
+
+            // Criar objeto anônimo com tipos corretos para evitar problemas de deserialização
+            var dadosParaServico = new
+            {
+                Apelido = dados.Apelido,
+                Pais = dados.Pais,
+                Idade = dados.Idade,
+                FuncaoPrincipal = dados.FuncaoPrincipal,
+                Status = dados.Status,
+                Disponibilidade = dados.Disponibilidade,
+                ValorDeMercado = dados.ValorDeMercado,
+                FotoUrl = dados.FotoUrl
+            };
+
+            var resultado = await _jogadorService.AtualizarJogadorAsync(userIdGuid, dadosParaServico, ct);
+            
+            if (resultado == null)
+                return NotFound("Perfil de jogador não encontrado");
+
+            return Ok(resultado);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Erro ao atualizar perfil: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Altera a visibilidade de um jogador
     /// </summary>
     [HttpPut("{id}/visibilidade")]

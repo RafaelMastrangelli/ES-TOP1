@@ -21,28 +21,41 @@ public class AuthService : IAuthService
 
     public async Task<string> GerarTokenAsync(Usuario usuario)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var claims = new[]
+        try
         {
-            new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
-            new Claim("user_id", usuario.Id.ToString()),
-            new Claim(ClaimTypes.Name, usuario.Nome),
-            new Claim(ClaimTypes.Email, usuario.Email),
-            new Claim(ClaimTypes.Role, usuario.Tipo.ToString()),
-            new Claim("TipoUsuario", usuario.Tipo.ToString())
-        };
+            Console.WriteLine($"AuthService: Gerando token para usuário: {usuario.Nome}");
+            
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var token = new JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"],
-            audience: _configuration["Jwt:Audience"],
-            claims: claims,
-            expires: DateTime.UtcNow.AddDays(30),
-            signingCredentials: credentials
-        );
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
+                new Claim("user_id", usuario.Id.ToString()),
+                new Claim(ClaimTypes.Name, usuario.Nome),
+                new Claim(ClaimTypes.Email, usuario.Email),
+                new Claim(ClaimTypes.Role, usuario.Tipo.ToString()),
+                new Claim("TipoUsuario", usuario.Tipo.ToString())
+            };
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+            var token = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.UtcNow.AddDays(30),
+                signingCredentials: credentials
+            );
+
+            var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+            Console.WriteLine($"AuthService: Token gerado com sucesso");
+            
+            return tokenString;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"AuthService: Erro ao gerar token: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task<Usuario?> ValidarCredenciaisAsync(string email, string senha)

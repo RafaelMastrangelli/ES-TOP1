@@ -215,6 +215,19 @@ export const api = {
     meuPerfil: async (): Promise<Jogador> => {
       return request<Jogador>(`${API_BASE_URL}/jogadores/meu-perfil`);
     },
+
+    atualizarPerfil: async (dados: Partial<Jogador>): Promise<Jogador> => {
+      return request<Jogador>(`${API_BASE_URL}/jogadores/meu-perfil`, {
+        method: 'PUT',
+        body: JSON.stringify(dados),
+      });
+    },
+
+    criarPerfil: async (): Promise<Jogador> => {
+      return request<Jogador>(`${API_BASE_URL}/jogadores/debug/criar-para-usuario`, {
+        method: 'POST',
+      });
+    },
   },
 
   times: {
@@ -244,6 +257,13 @@ export const api = {
 
     meuTime: async (): Promise<Time> => {
       return request<Time>(`${API_BASE_URL}/times/meu-time`);
+    },
+
+    atualizarTime: async (dados: Partial<Time>): Promise<Time> => {
+      return request<Time>(`${API_BASE_URL}/times/meu-time`, {
+        method: 'PUT',
+        body: JSON.stringify(dados),
+      });
     },
   },
 

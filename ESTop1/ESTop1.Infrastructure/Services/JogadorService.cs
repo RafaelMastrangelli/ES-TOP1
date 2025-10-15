@@ -214,6 +214,60 @@ public class JogadorService : IJogadorService
         };
     }
 
+    public async Task<object?> AtualizarJogadorAsync(Guid usuarioId, object requestObj, CancellationToken cancellationToken = default)
+    {
+        var request = (dynamic)requestObj;
+        
+        var jogador = await _context.Jogadores
+            .Include(j => j.TimeAtual)
+            .Include(j => j.Estatisticas)
+            .FirstOrDefaultAsync(j => j.Id == usuarioId, cancellationToken);
+        
+        if (jogador == null) return null;
+
+        // Atualizar apenas os campos fornecidos
+        if (request.Apelido != null) jogador.Apelido = request.Apelido;
+        if (request.Pais != null) jogador.Pais = request.Pais;
+        if (request.Idade.HasValue) jogador.Idade = request.Idade;
+        if (request.FuncaoPrincipal != null) jogador.FuncaoPrincipal = request.FuncaoPrincipal;
+        if (request.Status != null) jogador.Status = request.Status;
+        if (request.Disponibilidade != null) jogador.Disponibilidade = request.Disponibilidade;
+        if (request.ValorDeMercado.HasValue) jogador.ValorDeMercado = request.ValorDeMercado;
+        if (request.FotoUrl != null) jogador.FotoUrl = request.FotoUrl;
+
+        var jogadorAtualizado = await _jogadorRepository.AtualizarAsync(jogador, cancellationToken);
+
+        return new
+        {
+            jogadorAtualizado.Id,
+            jogadorAtualizado.Apelido,
+            jogadorAtualizado.Pais,
+            jogadorAtualizado.Idade,
+            jogadorAtualizado.FuncaoPrincipal,
+            jogadorAtualizado.Status,
+            jogadorAtualizado.Disponibilidade,
+            jogadorAtualizado.ValorDeMercado,
+            jogadorAtualizado.FotoUrl,
+            jogadorAtualizado.Visivel,
+            TimeAtual = jogadorAtualizado.TimeAtual != null ? new
+            {
+                jogadorAtualizado.TimeAtual.Id,
+                jogadorAtualizado.TimeAtual.Nome,
+                jogadorAtualizado.TimeAtual.Pais,
+                jogadorAtualizado.TimeAtual.Tier,
+                jogadorAtualizado.TimeAtual.Contratando
+            } : null,
+            Estatisticas = jogadorAtualizado.Estatisticas.Select(e => new
+            {
+                e.Id,
+                e.Periodo,
+                e.Rating,
+                e.KD,
+                e.PartidasJogadas
+            }).ToList()
+        };
+    }
+
     public async Task<bool> AlterarVisibilidadeJogadorAsync(Guid id, bool visivel, CancellationToken cancellationToken = default)
     {
         return await _jogadorRepository.AlterarVisibilidadeAsync(id, visivel, cancellationToken);

@@ -42,7 +42,9 @@ export const useAuth = () => {
         if (token) {
           // Verificar se o token ainda é válido
           const response = await api.get('/auth/me');
-          if (response.data) {
+          console.log('Resposta do /auth/me:', response.data);
+          
+          if (response.data && response.data.usuario) {
             setAuthState({
               user: response.data.usuario,
               assinatura: response.data.assinatura,
@@ -50,6 +52,7 @@ export const useAuth = () => {
               isLoading: false
             });
           } else {
+            console.log('Token inválido ou resposta vazia');
             localStorage.removeItem('auth_token');
             setAuthState({
               user: null,
@@ -59,6 +62,7 @@ export const useAuth = () => {
             });
           }
         } else {
+          // Se não há token, definir como não autenticado imediatamente
           setAuthState({
             user: null,
             assinatura: null,
@@ -67,6 +71,7 @@ export const useAuth = () => {
           });
         }
       } catch (error) {
+        console.log('Erro ao verificar autenticação:', error);
         localStorage.removeItem('auth_token');
         setAuthState({
           user: null,
@@ -83,13 +88,14 @@ export const useAuth = () => {
   const login = async (email: string, password: string) => {
     try {
       const response = await api.post('/auth/login', { email, senha: password });
+      console.log('Resposta do login:', response.data);
       
-      if (response.data.token) {
-        localStorage.setItem('auth_token', response.data.token);
+      if (response.data.Token) {
+        localStorage.setItem('auth_token', response.data.Token);
         
         setAuthState({
-          user: response.data.usuario,
-          assinatura: response.data.assinatura,
+          user: response.data.Usuario,
+          assinatura: response.data.Assinatura,
           isAuthenticated: true,
           isLoading: false
         });
@@ -100,6 +106,7 @@ export const useAuth = () => {
         
         return { success: true };
       } else {
+        console.log('Token não encontrado na resposta:', response.data);
         return { success: false, error: 'Resposta inválida do servidor' };
       }
     } catch (error: any) {
@@ -117,12 +124,12 @@ export const useAuth = () => {
         tipo 
       });
       
-      if (response.data.token) {
-        localStorage.setItem('auth_token', response.data.token);
+      if (response.data.Token) {
+        localStorage.setItem('auth_token', response.data.Token);
         
         setAuthState({
-          user: response.data.usuario,
-          assinatura: response.data.assinatura,
+          user: response.data.Usuario,
+          assinatura: response.data.Assinatura,
           isAuthenticated: true,
           isLoading: false
         });
