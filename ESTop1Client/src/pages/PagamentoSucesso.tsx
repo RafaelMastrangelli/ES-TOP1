@@ -15,7 +15,6 @@ import {
   Users,
   Target
 } from 'lucide-react';
-import Navbar from '../components/Navbar';
 
 interface Plano {
   id: string;
@@ -147,7 +146,6 @@ Obrigado por escolher a ES-TOP1!
   if (!plano) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <main className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -161,7 +159,6 @@ Obrigado por escolher a ES-TOP1!
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">

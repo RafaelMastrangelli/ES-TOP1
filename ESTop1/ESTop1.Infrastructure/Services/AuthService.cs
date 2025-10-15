@@ -27,6 +27,7 @@ public class AuthService : IAuthService
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
+            new Claim("user_id", usuario.Id.ToString()),
             new Claim(ClaimTypes.Name, usuario.Nome),
             new Claim(ClaimTypes.Email, usuario.Email),
             new Claim(ClaimTypes.Role, usuario.Tipo.ToString()),

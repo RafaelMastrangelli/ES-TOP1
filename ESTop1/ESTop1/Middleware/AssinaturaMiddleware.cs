@@ -69,7 +69,9 @@ public class AssinaturaMiddleware
                 // Jogadores têm acesso limitado
                 if (recurso == "perfil_proprio" || recurso == "estatisticas_proprias")
                     return true; // Sempre permitido para o próprio perfil
-                if (recurso == "buscar_times" || recurso == "aplicar_vagas")
+                if (recurso == "buscar_times")
+                    return true; // Acesso básico a times para jogadores
+                if (recurso == "aplicar_vagas")
                     return await assinaturaService.VerificarAcessoAsync(userId, recurso);
                 break;
         }

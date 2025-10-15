@@ -7,7 +7,8 @@ namespace ESTop1.Domain.Interfaces;
 /// </summary>
 public interface ITimeService
 {
-    Task<IEnumerable<object>> ListarTimesAsync(CancellationToken cancellationToken = default);
+    Task<object> ListarTimesAsync(object filtros, CancellationToken cancellationToken = default);
     Task<object?> ObterTimePorIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<object?> ObterTimePorUsuarioIdAsync(Guid usuarioId, CancellationToken cancellationToken = default);
     Task<object> CriarTimeAsync(object request, CancellationToken cancellationToken = default);
 }

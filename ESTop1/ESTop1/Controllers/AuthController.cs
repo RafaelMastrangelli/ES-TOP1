@@ -12,11 +12,13 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
     private readonly IAssinaturaService _assinaturaService;
+    private readonly IJogadorService _jogadorService;
 
-    public AuthController(IAuthService authService, IAssinaturaService assinaturaService)
+    public AuthController(IAuthService authService, IAssinaturaService assinaturaService, IJogadorService jogadorService)
     {
         _authService = authService;
         _assinaturaService = assinaturaService;
+        _jogadorService = jogadorService;
     }
 
     /// <summary>
@@ -219,6 +221,9 @@ public class AuthController : ControllerBase
             if (tipoUsuario == TipoUsuario.Jogador)
             {
                 await _assinaturaService.CriarAssinaturaAsync(usuario.Id, PlanoAssinatura.Gratuito);
+                
+                // Criar registro de jogador para usuários do tipo Jogador
+                await _jogadorService.CriarJogadorParaUsuarioAsync(usuario.Id, request.Nome);
             }
             // Organizações começam com plano gratuito mas com limitações
             else if (tipoUsuario == TipoUsuario.Organizacao)

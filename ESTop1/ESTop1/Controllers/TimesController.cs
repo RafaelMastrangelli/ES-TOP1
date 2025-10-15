@@ -22,17 +22,17 @@ public class TimesController : ControllerBase
     }
 
     /// <summary>
-    /// Lista todos os times
+    /// Lista todos os times com filtros
     /// </summary>
     [HttpGet]
     [Authorize]
     [RequerAssinatura("buscar_times")]
-    public async Task<IActionResult> Listar(CancellationToken ct)
+    public async Task<IActionResult> Listar([FromQuery] FiltroTime filtros, CancellationToken ct)
     {
         try
         {
-            var times = await _timeService.ListarTimesAsync(ct);
-            return Ok(times);
+            var resultado = await _timeService.ListarTimesAsync(filtros, ct);
+            return Ok(resultado);
         }
         catch (Exception ex)
         {
@@ -54,6 +54,32 @@ public class TimesController : ControllerBase
             
             if (time == null)
                 return NotFound();
+
+            return Ok(time);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Erro ao obter time: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Obtém o time da organização logada
+    /// </summary>
+    [HttpGet("meu-time")]
+    [AuthorizeOrganizacao]
+    public async Task<IActionResult> MeuTime(CancellationToken ct)
+    {
+        try
+        {
+            var userId = User.FindFirst("user_id")?.Value;
+            if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userIdGuid))
+                return Unauthorized();
+
+            var time = await _timeService.ObterTimePorUsuarioIdAsync(userIdGuid, ct);
+            
+            if (time == null)
+                return NotFound("Time não encontrado para esta organização");
 
             return Ok(time);
         }

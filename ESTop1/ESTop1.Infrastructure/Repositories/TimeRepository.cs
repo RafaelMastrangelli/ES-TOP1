@@ -24,6 +24,13 @@ public class TimeRepository : ITimeRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IEnumerable<Time>> ListarComFiltrosAsync(object filtros, CancellationToken cancellationToken = default)
+    {
+        return await _context.Times.AsNoTracking()
+            .Include(t => t.Jogadores)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Time?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.Times.AsNoTracking()

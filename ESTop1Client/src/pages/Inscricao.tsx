@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { CriarInscricaoRequest } from '@/types';
-import Navbar from '@/components/Navbar';
 import AuthForm from '@/components/AuthForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -103,7 +102,6 @@ const Inscricao = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       
       <AuthForm 
         title="Inscreva-se como Aspirante"

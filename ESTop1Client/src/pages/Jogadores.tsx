@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { FiltrosJogadores as Filtros, FaceitSearchResult } from '@/types';
-import Navbar from '@/components/Navbar';
 import JogadorCard from '@/components/JogadorCard';
 import FiltrosJogadores from '@/components/FiltrosJogadores';
 import FaceitPlayerCard from '@/components/FaceitPlayerCard';
@@ -109,7 +108,6 @@ const Jogadores = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
 
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">

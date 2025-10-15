@@ -1,7 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +20,6 @@ const JogadorDetalhes = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -32,7 +30,6 @@ const JogadorDetalhes = () => {
   if (error || !jogador) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="container mx-auto px-4 py-8 text-center">
           <p className="text-destructive">Jogador não encontrado.</p>
           <Button asChild className="mt-4">
@@ -60,7 +57,6 @@ const JogadorDetalhes = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
 
       <main className="container mx-auto px-4 py-8">
         <Button variant="ghost" asChild className="mb-6">

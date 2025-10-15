@@ -15,6 +15,8 @@ export interface Time {
   id: string;
   nome: string;
   pais: string;
+  tier?: number;
+  contratando?: boolean;
   jogadores?: Jogador[];
 }
 
@@ -42,6 +44,13 @@ export interface JogadoresPaginados {
   items: Jogador[];
 }
 
+export interface TimesPaginados {
+  total: number;
+  page: number;
+  pageSize: number;
+  items: Time[];
+}
+
 export interface FiltrosJogadores {
   q?: string;
   pais?: string;
@@ -50,6 +59,15 @@ export interface FiltrosJogadores {
   funcao?: FuncaoPrincipal;
   maxIdade?: number;
   ordenar?: 'rating_desc' | 'valor_desc' | 'apelido_asc';
+  page?: number;
+  pageSize?: number;
+}
+
+export interface FiltrosTimes {
+  nome?: string;
+  tier?: '1' | '2' | '3';
+  contratando?: 'true' | 'false';
+  ordenar?: 'nome_asc' | 'tier_asc' | 'tier_desc';
   page?: number;
   pageSize?: number;
 }

@@ -94,6 +94,56 @@ public class JogadorService : IJogadorService
         };
     }
 
+    public async Task<object?> ObterJogadorPorUsuarioIdAsync(Guid usuarioId, CancellationToken cancellationToken = default)
+    {
+        // Para jogadores, vamos buscar um jogador que tenha o mesmo ID do usuário
+        // Isso assume que quando um jogador se registra, um registro de Jogador é criado com o mesmo ID
+        Console.WriteLine($"Buscando jogador com ID: {usuarioId}");
+        
+        var jogador = await _context.Jogadores
+            .Include(j => j.TimeAtual)
+            .Include(j => j.Estatisticas)
+            .FirstOrDefaultAsync(j => j.Id == usuarioId, cancellationToken);
+        
+        Console.WriteLine($"Jogador encontrado: {jogador != null}");
+        if (jogador != null)
+        {
+            Console.WriteLine($"Jogador: {jogador.Apelido}, ID: {jogador.Id}");
+        }
+        
+        if (jogador == null) return null;
+
+        return new
+        {
+            jogador.Id,
+            jogador.Apelido,
+            jogador.Pais,
+            jogador.Idade,
+            jogador.FuncaoPrincipal,
+            jogador.Status,
+            jogador.Disponibilidade,
+            jogador.ValorDeMercado,
+            jogador.FotoUrl,
+            jogador.Visivel,
+            TimeAtual = jogador.TimeAtual != null ? new
+            {
+                jogador.TimeAtual.Id,
+                jogador.TimeAtual.Nome,
+                jogador.TimeAtual.Pais,
+                jogador.TimeAtual.Tier,
+                jogador.TimeAtual.Contratando
+            } : null,
+            Estatisticas = jogador.Estatisticas.Select(e => new
+            {
+                e.Id,
+                e.Periodo,
+                e.Rating,
+                e.KD,
+                e.PartidasJogadas
+            }).ToList()
+        };
+    }
+
     public async Task<object> CriarJogadorAsync(object requestObj, CancellationToken cancellationToken = default)
     {
         var request = (dynamic)requestObj;
@@ -130,6 +180,37 @@ public class JogadorService : IJogadorService
                 jogadorCriado.TimeAtual.Nome,
                 jogadorCriado.TimeAtual.Pais
             } : null
+        };
+    }
+
+    public async Task<object> CriarJogadorParaUsuarioAsync(Guid usuarioId, string nome, CancellationToken cancellationToken = default)
+    {
+        var jogador = new Jogador
+        {
+            Id = usuarioId, // Usar o mesmo ID do usuário
+            Apelido = nome, // Usar o nome do usuário como apelido inicial
+            Pais = "BR",
+            Idade = 18, // Idade padrão
+            FuncaoPrincipal = Funcao.Entry, // Função padrão
+            Status = StatusJogador.Amador, // Status padrão
+            Disponibilidade = Disponibilidade.Livre, // Disponibilidade padrão
+            ValorDeMercado = 10000, // Valor padrão
+            Visivel = true
+        };
+
+        var jogadorCriado = await _jogadorRepository.CriarAsync(jogador, cancellationToken);
+
+        return new
+        {
+            jogadorCriado.Id,
+            jogadorCriado.Apelido,
+            jogadorCriado.Pais,
+            jogadorCriado.Idade,
+            jogadorCriado.FuncaoPrincipal,
+            jogadorCriado.Status,
+            jogadorCriado.Disponibilidade,
+            jogadorCriado.ValorDeMercado,
+            jogadorCriado.Visivel
         };
     }
 

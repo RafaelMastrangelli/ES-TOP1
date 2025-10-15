@@ -3,6 +3,8 @@ import {
   JogadoresPaginados, 
   FiltrosJogadores, 
   Time, 
+  TimesPaginados,
+  FiltrosTimes,
   CriarJogadorRequest, 
   CriarTimeRequest, 
   CriarInscricaoRequest,
@@ -209,11 +211,24 @@ export const api = {
         method: 'PUT',
       });
     },
+
+    meuPerfil: async (): Promise<Jogador> => {
+      return request<Jogador>(`${API_BASE_URL}/jogadores/meu-perfil`);
+    },
   },
 
   times: {
-    listar: async (): Promise<Time[]> => {
-      return request<Time[]>(`${API_BASE_URL}/times`);
+    listar: async (filtros?: FiltrosTimes): Promise<TimesPaginados> => {
+      const params = new URLSearchParams();
+      
+      if (filtros?.nome) params.append('nome', filtros.nome);
+      if (filtros?.tier) params.append('tier', filtros.tier);
+      if (filtros?.contratando) params.append('contratando', filtros.contratando);
+      if (filtros?.ordenar) params.append('ordenar', filtros.ordenar);
+      if (filtros?.page) params.append('page', filtros.page.toString());
+      if (filtros?.pageSize) params.append('pageSize', filtros.pageSize.toString());
+
+      return request<TimesPaginados>(`${API_BASE_URL}/times?${params}`);
     },
 
     buscarPorId: async (id: string): Promise<Time> => {
@@ -225,6 +240,10 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(dados),
       });
+    },
+
+    meuTime: async (): Promise<Time> => {
+      return request<Time>(`${API_BASE_URL}/times/meu-time`);
     },
   },
 

@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Loader2, Check, X, Crown, Star, Zap, Target, Users } from 'lucide-react';
-import Navbar from '../components/Navbar';
 
 interface Plano {
   id: string;
@@ -163,7 +162,6 @@ export default function Assinaturas() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <main className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -175,7 +173,6 @@ export default function Assinaturas() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">

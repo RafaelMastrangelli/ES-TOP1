@@ -78,6 +78,8 @@ public class AssinaturaService : IAssinaturaService
             "busca_ia" => plano.AcessoBuscaIA,
             "api" => plano.AcessoAPI,
             "suporte" => plano.SuportePrioritario,
+            "buscar_times" => true, // Acesso básico a times para todos os usuários com assinatura
+            "buscar_jogadores" => true, // Acesso básico a jogadores para organizações
             _ => false
         };
     }

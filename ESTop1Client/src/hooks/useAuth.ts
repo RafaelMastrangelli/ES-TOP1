@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
 
 interface User {
@@ -25,6 +26,8 @@ interface AuthState {
 }
 
 export const useAuth = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     assinatura: null,
@@ -91,6 +94,10 @@ export const useAuth = () => {
           isLoading: false
         });
         
+        // Redirecionar para a página que o usuário tentou acessar ou para a home
+        const from = location.state?.from?.pathname || '/';
+        navigate(from, { replace: true });
+        
         return { success: true };
       } else {
         return { success: false, error: 'Resposta inválida do servidor' };
@@ -120,6 +127,9 @@ export const useAuth = () => {
           isLoading: false
         });
         
+        // Redirecionar para a home após registro
+        navigate('/', { replace: true });
+        
         return { success: true };
       } else {
         return { success: false, error: 'Resposta inválida do servidor' };
@@ -138,6 +148,8 @@ export const useAuth = () => {
       isAuthenticated: false,
       isLoading: false
     });
+    // Redirecionar para a home após logout
+    navigate('/', { replace: true });
   };
 
   return {

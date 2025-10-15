@@ -2,7 +2,6 @@ import { useLocation, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Target, ArrowRight } from 'lucide-react';
-import Navbar from '@/components/Navbar';
 
 const InscricaoSucesso = () => {
   const location = useLocation();
@@ -10,7 +9,6 @@ const InscricaoSucesso = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-2xl mx-auto">

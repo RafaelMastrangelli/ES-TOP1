@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Eye, EyeOff } from 'lucide-react';
-import Navbar from '@/components/Navbar';
 import AuthForm from '@/components/AuthForm';
 import { useAuth } from '@/hooks/useAuth';
 import LoadingSpinner from '@/components/ui/loading-spinner';
@@ -52,7 +51,6 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       
       <AuthForm 
         title="Bem-vindo de volta"

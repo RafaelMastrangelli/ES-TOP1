@@ -1,13 +1,11 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Users, Trophy, TrendingUp } from 'lucide-react';
-import Navbar from '@/components/Navbar';
 import heroImage from '@/assets/hero-cs2.jpg';
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
 
       {/* Hero Section */}
       <section className="relative h-[600px] flex items-center justify-center overflow-hidden">

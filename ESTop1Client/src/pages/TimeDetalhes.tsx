@@ -1,7 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import Navbar from '@/components/Navbar';
 import JogadorCard from '@/components/JogadorCard';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -20,7 +19,6 @@ const TimeDetalhes = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -31,7 +29,6 @@ const TimeDetalhes = () => {
   if (error || !time) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
         <div className="container mx-auto px-4 py-8 text-center">
           <p className="text-destructive">Time não encontrado.</p>
           <Button asChild className="mt-4">
@@ -44,7 +41,6 @@ const TimeDetalhes = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
 
       <main className="container mx-auto px-4 py-8">
         <Button variant="ghost" asChild className="mb-6">
