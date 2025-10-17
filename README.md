@@ -226,21 +226,6 @@ A nova funcionalidade permite buscar jogadores usando linguagem natural:
 - **PublicLayout**: Para páginas públicas (header simples)
 - **ProtectedLayout**: Para páginas protegidas (sidebar + top bar)
 
-## 🚀 Deploy e Produção
-
-### Status do Projeto
-✅ **Pronto para Produção** - Código limpo, configurado e testado
-
-### Checklist de Deploy
-- [ ] Configurar variáveis de ambiente
-- [ ] Atualizar domínios no CORS
-- [ ] Configurar chaves JWT seguras
-- [ ] Configurar APIs externas (OpenAI, FACEIT)
-- [ ] Executar migrations do banco
-- [ ] Testar build de produção
-- [ ] Configurar SSL/HTTPS
-- [ ] Configurar backup do banco
-
 ### Arquitetura de Produção
 - **Backend**: .NET 9 com SQLite
 - **Frontend**: React com Vite (build otimizado)
