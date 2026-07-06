@@ -1,4 +1,5 @@
 using ESTop1.Api.DTOs;
+using ESTop1.Domain.DTOs;
 using ESTop1.Domain.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,8 +27,17 @@ public class InscricoesController : ControllerBase
     {
         try
         {
-            var resultado = await _inscricaoService.CriarInscricaoAsync(request, ct);
-            return Ok(resultado);
+            var resultado = await _inscricaoService.CriarInscricaoAsync(new CriarInscricaoCommand
+            {
+                Apelido = request.Apelido,
+                Pais = request.Pais,
+                Idade = request.Idade,
+                FuncaoPrincipal = request.FuncaoPrincipal,
+                Rating = request.Rating,
+                KD = request.KD,
+                PartidasJogadas = request.PartidasJogadas
+            }, ct);
+            return Ok(new { inscricaoId = resultado.InscricaoId, message = resultado.Message });
         }
         catch (Exception ex)
         {

@@ -3,7 +3,7 @@ using ESTop1.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ESTop1.Api.Controllers;
+namespace ESTop1.Api.Controllers.Integracoes;
 
 [ApiController]
 [Route("api/integracoes/openai")]

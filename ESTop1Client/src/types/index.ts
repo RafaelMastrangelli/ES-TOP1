@@ -185,3 +185,79 @@ export interface FaceitSearchResult {
   stats: FaceitStats | null;
   matches: FaceitMatch[];
 }
+
+export interface ApiErrorResponse {
+  message?: string;
+  error?: string;
+  errorCode?: string;
+  details?: string;
+}
+
+export class ApiRequestError extends Error {
+  response?: {
+    data: ApiErrorResponse;
+    status: number;
+  };
+
+  constructor(message: string, response?: ApiRequestError['response']) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.response = response;
+  }
+}
+
+export interface AuthUser {
+  id: string;
+  nome: string;
+  email: string;
+  tipo: string;
+}
+
+export interface AuthAssinatura {
+  id: string;
+  plano: string;
+  status: string;
+  dataInicio: string;
+  dataFim: string;
+  valorMensal: number;
+}
+
+export interface AuthResponse {
+  Token: string;
+  Usuario: AuthUser;
+  Assinatura: AuthAssinatura | null;
+}
+
+export interface AuthMeResponse {
+  usuario: AuthUser;
+  assinatura: AuthAssinatura | null;
+}
+
+export interface OpenAIJogadorResult {
+  id: string;
+  apelido: string;
+  pais: string;
+  idade: number;
+  funcaoPrincipal: FuncaoPrincipal;
+  status: StatusJogador;
+  disponibilidade: Disponibilidade;
+  valorDeMercado: number;
+  fotoUrl?: string;
+  rating?: number;
+  kd?: number;
+  partidasJogadas?: number;
+}
+
+export interface OpenAIBuscaJogadoresResponse {
+  jogadores: OpenAIJogadorResult[];
+  total: number;
+  consultaOriginal: string;
+  consultaIA: string;
+  origem?: string;
+}
+
+export interface OpenAISugerirFiltrosResponse {
+  filtros: Partial<FiltrosJogadores>;
+  descricaoOriginal: string;
+  erro?: string;
+}

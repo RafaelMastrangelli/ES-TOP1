@@ -8,8 +8,10 @@ namespace ESTop1.Domain.Interfaces;
 public interface ITimeRepository
 {
     Task<IEnumerable<Time>> ListarAsync(CancellationToken cancellationToken = default);
-    Task<IEnumerable<Time>> ListarComFiltrosAsync(object filtros, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Time>> ListarAsync(FiltroTime filtro, CancellationToken cancellationToken = default);
+    Task<int> ContarAsync(FiltroTime filtro, CancellationToken cancellationToken = default);
     Task<Time?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Time?> ObterRastreadoPorIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<Time?> ObterPorNomeAsync(string nome, CancellationToken cancellationToken = default);
     Task<Time> CriarAsync(Time time, CancellationToken cancellationToken = default);
     Task<Time> AtualizarAsync(Time time, CancellationToken cancellationToken = default);

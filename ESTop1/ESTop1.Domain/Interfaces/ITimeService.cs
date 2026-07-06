@@ -1,4 +1,4 @@
-using ESTop1.Domain;
+using ESTop1.Domain.DTOs;
 
 namespace ESTop1.Domain.Interfaces;
 
@@ -7,9 +7,9 @@ namespace ESTop1.Domain.Interfaces;
 /// </summary>
 public interface ITimeService
 {
-    Task<object> ListarTimesAsync(object filtros, CancellationToken cancellationToken = default);
-    Task<object?> ObterTimePorIdAsync(Guid id, CancellationToken cancellationToken = default);
-    Task<object?> ObterTimePorUsuarioIdAsync(Guid usuarioId, CancellationToken cancellationToken = default);
-    Task<object> CriarTimeAsync(object request, CancellationToken cancellationToken = default);
-    Task<object?> AtualizarTimeAsync(Guid usuarioId, object request, CancellationToken cancellationToken = default);
+    Task<TimesPaginadosDto> ListarTimesAsync(FiltroTime filtros, CancellationToken cancellationToken = default);
+    Task<TimeDetalheDto?> ObterTimePorIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<TimeDetalheDto?> ObterTimePorUsuarioIdAsync(Guid usuarioId, CancellationToken cancellationToken = default);
+    Task<TimeDetalheDto> CriarTimeAsync(CriarTimeCommand request, CancellationToken cancellationToken = default);
+    Task<TimeDetalheDto?> AtualizarTimeAsync(Guid usuarioId, AtualizarTimeCommand request, CancellationToken cancellationToken = default);
 }

@@ -1,5 +1,6 @@
 using ESTop1.Api.Attributes;
 using ESTop1.Api.DTOs;
+using ESTop1.Domain.DTOs;
 using ESTop1.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -98,8 +99,12 @@ public class TimesController : ControllerBase
     {
         try
         {
-            var resultado = await _timeService.CriarTimeAsync(request, ct);
-            return CreatedAtAction(nameof(Obter), new { id = ((dynamic)resultado).Id }, resultado);
+            var resultado = await _timeService.CriarTimeAsync(new CriarTimeCommand
+            {
+                Nome = request.Nome,
+                Pais = request.Pais
+            }, ct);
+            return CreatedAtAction(nameof(Obter), new { id = resultado.Id }, resultado);
         }
         catch (Exception ex)
         {
@@ -120,7 +125,14 @@ public class TimesController : ControllerBase
             if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userIdGuid))
                 return Unauthorized();
 
-            var resultado = await _timeService.AtualizarTimeAsync(userIdGuid, request, ct);
+            var resultado = await _timeService.AtualizarTimeAsync(userIdGuid, new AtualizarTimeCommand
+            {
+                Nome = request.Nome,
+                Pais = request.Pais,
+                Tier = request.Tier,
+                Contratando = request.Contratando,
+                LogoUrl = request.LogoUrl
+            }, ct);
             
             if (resultado == null)
                 return NotFound("Time não encontrado para esta organização");

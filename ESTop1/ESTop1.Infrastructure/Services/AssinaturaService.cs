@@ -1,40 +1,40 @@
 using ESTop1.Domain;
 using ESTop1.Domain.Interfaces;
-using ESTop1.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 
 namespace ESTop1.Infrastructure.Services;
 
 public class AssinaturaService : IAssinaturaService
 {
-    private readonly AppDbContext _context;
+    private readonly IAssinaturaRepository _assinaturaRepository;
+    private readonly IPlanoRepository _planoRepository;
+    private readonly IUsuarioRepository _usuarioRepository;
 
-    public AssinaturaService(AppDbContext context)
+    public AssinaturaService(
+        IAssinaturaRepository assinaturaRepository,
+        IPlanoRepository planoRepository,
+        IUsuarioRepository usuarioRepository)
     {
-        _context = context;
+        _assinaturaRepository = assinaturaRepository;
+        _planoRepository = planoRepository;
+        _usuarioRepository = usuarioRepository;
     }
 
     public async Task<Assinatura> CriarAssinaturaAsync(Guid usuarioId, PlanoAssinatura plano)
     {
-        // Cancelar assinaturas ativas existentes
-        var assinaturasAtivas = await _context.Assinaturas
-            .Where(a => a.UsuarioId == usuarioId && a.Status == StatusAssinatura.Ativa)
-            .ToListAsync();
-
+        var assinaturasAtivas = await _assinaturaRepository.ListarAtivasPorUsuarioAsync(usuarioId);
         foreach (var assinatura in assinaturasAtivas)
         {
             assinatura.Status = StatusAssinatura.Cancelada;
             assinatura.DataCancelamento = DateTime.UtcNow;
+            await _assinaturaRepository.AtualizarAsync(assinatura);
         }
 
-        // Obter plano
-        var planoDetalhes = await _context.Planos
-            .FirstOrDefaultAsync(p => p.Tipo == plano && p.Ativo);
-
-        if (planoDetalhes == null)
+        var planoDetalhes = await _planoRepository.ObterAtivoPorTipoAsync(plano);
+        if (planoDetalhes is null)
+        {
             throw new ArgumentException("Plano não encontrado ou inativo");
+        }
 
-        // Criar nova assinatura
         var novaAssinatura = new Assinatura
         {
             Id = Guid.NewGuid(),
@@ -44,33 +44,24 @@ public class AssinaturaService : IAssinaturaService
             DataInicio = DateTime.UtcNow,
             DataFim = DateTime.UtcNow.AddMonths(1),
             ValorMensal = planoDetalhes.ValorMensal,
-            IdTransacao = Guid.NewGuid().ToString() // Mock - substituir por ID real do gateway
+            IdTransacao = Guid.NewGuid().ToString()
         };
 
-        _context.Assinaturas.Add(novaAssinatura);
-        await _context.SaveChangesAsync();
-
-        return novaAssinatura;
+        return await _assinaturaRepository.CriarAsync(novaAssinatura);
     }
 
-    public async Task<Assinatura?> ObterAssinaturaAtivaAsync(Guid usuarioId)
+    public Task<Assinatura?> ObterAssinaturaAtivaAsync(Guid usuarioId)
     {
-        return await _context.Assinaturas
-            .Include(a => a.Usuario)
-            .FirstOrDefaultAsync(a => a.UsuarioId == usuarioId && 
-                                     a.Status == StatusAssinatura.Ativa && 
-                                     a.DataFim > DateTime.UtcNow);
+        return _assinaturaRepository.ObterAtivaPorUsuarioAsync(usuarioId);
     }
 
     public async Task<bool> VerificarAcessoAsync(Guid usuarioId, string recurso)
     {
         var assinatura = await ObterAssinaturaAtivaAsync(usuarioId);
-        if (assinatura == null) return false;
+        if (assinatura is null) return false;
 
-        var plano = await _context.Planos
-            .FirstOrDefaultAsync(p => p.Tipo == assinatura.Plano);
-
-        if (plano == null) return false;
+        var plano = await _planoRepository.ObterPorTipoAsync(assinatura.Plano);
+        if (plano is null) return false;
 
         return recurso switch
         {
@@ -78,52 +69,45 @@ public class AssinaturaService : IAssinaturaService
             "busca_ia" => plano.AcessoBuscaIA,
             "api" => plano.AcessoAPI,
             "suporte" => plano.SuportePrioritario,
-            "buscar_times" => true, // Acesso básico a times para todos os usuários com assinatura
-            "buscar_jogadores" => true, // Acesso básico a jogadores para organizações
+            "buscar_times" => true,
+            "buscar_jogadores" => true,
             _ => false
         };
     }
 
     public async Task CancelarAssinaturaAsync(Guid assinaturaId)
     {
-        var assinatura = await _context.Assinaturas.FindAsync(assinaturaId);
-        if (assinatura == null) return;
+        var assinatura = await _assinaturaRepository.ObterPorIdAsync(assinaturaId);
+        if (assinatura is null) return;
 
         assinatura.Status = StatusAssinatura.Cancelada;
         assinatura.DataCancelamento = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
+        await _assinaturaRepository.AtualizarAsync(assinatura);
     }
 
     public async Task RenovarAssinaturaAsync(Guid assinaturaId)
     {
-        var assinatura = await _context.Assinaturas.FindAsync(assinaturaId);
-        if (assinatura == null) return;
+        var assinatura = await _assinaturaRepository.ObterPorIdAsync(assinaturaId);
+        if (assinatura is null) return;
 
         assinatura.DataFim = assinatura.DataFim.AddMonths(1);
         assinatura.Status = StatusAssinatura.Ativa;
-
-        await _context.SaveChangesAsync();
+        await _assinaturaRepository.AtualizarAsync(assinatura);
     }
 
-    public async Task<List<Plano>> ObterPlanosDisponiveisAsync()
+    public Task<List<Plano>> ObterPlanosDisponiveisAsync()
     {
-        return await _context.Planos
-            .Where(p => p.Ativo)
-            .OrderBy(p => p.ValorMensal)
-            .ToListAsync();
+        return _planoRepository.ListarAtivosAsync();
     }
 
     public async Task<Assinatura> AtualizarAssinaturaPorEmailAsync(string email, PlanoAssinatura plano)
     {
-        // Buscar usuário por email
-        var usuario = await _context.Usuarios
-            .FirstOrDefaultAsync(u => u.Email == email);
-
-        if (usuario == null)
+        var usuario = await _usuarioRepository.ObterPorEmailAsync(email);
+        if (usuario is null)
+        {
             throw new ArgumentException("Usuário não encontrado com o email fornecido");
+        }
 
-        // Usar o método existente para criar/atualizar a assinatura
         return await CriarAssinaturaAsync(usuario.Id, plano);
     }
 }

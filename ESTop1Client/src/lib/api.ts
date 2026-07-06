@@ -12,11 +12,39 @@ import {
   FaceitPlayer,
   FaceitStats,
   FaceitMatch,
-  FaceitSearchResult
+  FaceitSearchResult,
+  ApiErrorResponse,
+  ApiRequestError,
+  AuthResponse,
+  AuthMeResponse,
+  AuthAssinatura,
+  OpenAIBuscaJogadoresResponse,
+  OpenAISugerirFiltrosResponse
 } from '@/types';
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5059/api';
+
+const parseErrorData = async (response: Response): Promise<ApiErrorResponse> => {
+  try {
+    const responseText = await response.text();
+    try {
+      return JSON.parse(responseText) as ApiErrorResponse;
+    } catch {
+      return { message: responseText };
+    }
+  } catch {
+    return { message: `Erro ${response.status}` };
+  }
+};
+
+const throwApiError = async (response: Response): Promise<never> => {
+  const errorData = await parseErrorData(response);
+  throw new ApiRequestError(errorData.message || `Erro ${response.status}`, {
+    data: errorData,
+    status: response.status,
+  });
+};
 
 // Helper para fazer requisições HTTP
 const request = async <T>(
@@ -35,24 +63,10 @@ const request = async <T>(
   });
 
   if (!response.ok) {
-    let errorData;
-    try {
-      const responseText = await response.text();
-      try {
-        errorData = JSON.parse(responseText);
-      } catch {
-        errorData = { message: responseText };
-      }
-    } catch {
-      errorData = { message: `Erro ${response.status}` };
-    }
-    
-    const error = new Error(errorData.message || `Erro ${response.status}`);
-    (error as any).response = { data: errorData, status: response.status };
-    throw error;
+    await throwApiError(response);
   }
 
-  return response.json();
+  return response.json() as Promise<T>;
 };
 
 export const api = {
@@ -67,27 +81,13 @@ export const api = {
     });
     
     if (!response.ok) {
-      let errorData;
-      try {
-        const responseText = await response.text();
-        try {
-          errorData = JSON.parse(responseText);
-        } catch {
-          errorData = { message: responseText };
-        }
-      } catch {
-        errorData = { message: `Erro ${response.status}` };
-      }
-      
-      const error = new Error(errorData.message || `Erro ${response.status}`);
-      (error as any).response = { data: errorData, status: response.status };
-      throw error;
+      await throwApiError(response);
     }
     
     return { data: await response.json() };
   },
 
-  post: async (url: string, data?: any) => {
+  post: async <T = unknown>(url: string, data?: unknown) => {
     const token = localStorage.getItem('auth_token');
     const response = await fetch(`${API_BASE_URL}${url}`, {
       method: 'POST',
@@ -99,81 +99,56 @@ export const api = {
     });
     
     if (!response.ok) {
-      let errorData;
-      try {
-        const responseText = await response.text();
-        try {
-          errorData = JSON.parse(responseText);
-        } catch {
-          errorData = { message: responseText };
-        }
-      } catch {
-        errorData = { message: `Erro ${response.status}` };
-      }
-      
-      const error = new Error(errorData.message || `Erro ${response.status}`);
-      (error as any).response = { data: errorData, status: response.status };
-      throw error;
+      await throwApiError(response);
     }
     
-    return { data: await response.json() };
+    return { data: await response.json() as T };
   },
 
   auth: {
     login: async (email: string, senha: string) => {
-      return request<{
-        token: string;
-        usuario: any;
-        assinatura: any;
-      }>(`${API_BASE_URL}/auth/login`, {
+      return request<AuthResponse>(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         body: JSON.stringify({ email, senha }),
       });
     },
 
     registro: async (nome: string, email: string, senha: string, tipo: string) => {
-      return request<{
-        token: string;
-        usuario: any;
-        assinatura: any;
-      }>(`${API_BASE_URL}/auth/registro`, {
+      return request<AuthResponse>(`${API_BASE_URL}/auth/registro`, {
         method: 'POST',
         body: JSON.stringify({ nome, email, senha, tipo }),
       });
     },
 
     me: async () => {
-      return request<{
-        usuario: any;
-        assinatura: any;
-      }>(`${API_BASE_URL}/auth/me`);
+      return request<AuthMeResponse>(`${API_BASE_URL}/auth/me`);
     },
   },
 
   assinaturas: {
     obterPlanos: async () => {
-      return request<any[]>(`${API_BASE_URL}/assinaturas/planos`);
+      return request<AuthAssinatura[]>(`${API_BASE_URL}/assinaturas/planos`);
     },
 
     obterMinha: async () => {
-      return request<any>(`${API_BASE_URL}/assinaturas/minha`);
+      return request<AuthAssinatura>(`${API_BASE_URL}/assinaturas/minha`);
     },
 
     criar: async (plano: string) => {
-      return request<any>(`${API_BASE_URL}/assinaturas/criar`, {
+      return request<AuthAssinatura>(`${API_BASE_URL}/assinaturas/criar`, {
         method: 'POST',
         body: JSON.stringify({ plano }),
       });
     },
 
     cancelar: async (id: string) => {
-      return request<any>(`${API_BASE_URL}/assinaturas/${id}/cancelar`, {
+      return request<AuthAssinatura>(`${API_BASE_URL}/assinaturas/${id}/cancelar`, {
         method: 'POST',
       });
     },
 
     renovar: async (id: string) => {
-      return request<any>(`${API_BASE_URL}/assinaturas/${id}/renovar`, {
+      return request<AuthAssinatura>(`${API_BASE_URL}/assinaturas/${id}/renovar`, {
         method: 'POST',
       });
     },

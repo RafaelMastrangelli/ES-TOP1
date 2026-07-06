@@ -1,7 +1,6 @@
 using ESTop1.Domain;
+using ESTop1.Domain.DTOs;
 using ESTop1.Domain.Interfaces;
-using ESTop1.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 
 namespace ESTop1.Infrastructure.Services;
 
@@ -11,126 +10,45 @@ namespace ESTop1.Infrastructure.Services;
 public class TimeService : ITimeService
 {
     private readonly ITimeRepository _timeRepository;
-    private readonly AppDbContext _context;
+    private readonly IUsuarioRepository _usuarioRepository;
 
-    public TimeService(ITimeRepository timeRepository, AppDbContext context)
+    public TimeService(ITimeRepository timeRepository, IUsuarioRepository usuarioRepository)
     {
         _timeRepository = timeRepository;
-        _context = context;
+        _usuarioRepository = usuarioRepository;
     }
 
-    public async Task<object> ListarTimesAsync(object filtrosObj, CancellationToken cancellationToken = default)
+    public async Task<TimesPaginadosDto> ListarTimesAsync(FiltroTime filtros, CancellationToken cancellationToken = default)
     {
-        var times = await _timeRepository.ListarComFiltrosAsync(filtrosObj, cancellationToken);
-        
-        // Converter para lista para trabalhar sem problemas de dynamic
-        var timesList = times.ToList();
-        
-        // Aplicar filtros manualmente
-        var timesFiltrados = timesList.AsEnumerable();
-        
-        // Filtro por nome
-        if (filtrosObj.GetType().GetProperty("Nome")?.GetValue(filtrosObj) is string nome && !string.IsNullOrEmpty(nome))
-        {
-            timesFiltrados = timesFiltrados.Where(t => t.Nome.Contains(nome, StringComparison.OrdinalIgnoreCase));
-        }
-        
-        // Filtro por tier
-        if (filtrosObj.GetType().GetProperty("Tier")?.GetValue(filtrosObj) is int tier)
-        {
-            timesFiltrados = timesFiltrados.Where(t => t.Tier == tier);
-        }
-        
-        // Filtro por contratando
-        if (filtrosObj.GetType().GetProperty("Contratando")?.GetValue(filtrosObj) is bool contratando)
-        {
-            timesFiltrados = timesFiltrados.Where(t => t.Contratando == contratando);
-        }
-        
-        // Aplicar ordenação
-        var ordenar = filtrosObj.GetType().GetProperty("Ordenar")?.GetValue(filtrosObj) as string;
-        timesFiltrados = ordenar switch
-        {
-            "nome_asc" => timesFiltrados.OrderBy(t => t.Nome),
-            "tier_asc" => timesFiltrados.OrderBy(t => t.Tier ?? int.MaxValue),
-            "tier_desc" => timesFiltrados.OrderByDescending(t => t.Tier ?? 0),
-            _ => timesFiltrados.OrderBy(t => t.Nome)
-        };
-        
-        // Aplicar paginação
-        var total = timesFiltrados.Count();
-        var page = (int)(filtrosObj.GetType().GetProperty("Page")?.GetValue(filtrosObj) ?? 1);
-        var pageSize = (int)(filtrosObj.GetType().GetProperty("PageSize")?.GetValue(filtrosObj) ?? 12);
-        var skip = (page - 1) * pageSize;
-        
-        var items = timesFiltrados.Skip(skip).Take(pageSize).Select(t => new
-        {
-            t.Id,
-            t.Nome,
-            t.Pais,
-            t.Tier,
-            t.Contratando,
-            QuantidadeJogadores = t.Jogadores.Count
-        }).ToList();
-        
-        return new
+        var times = await _timeRepository.ListarAsync(filtros, cancellationToken);
+        var total = await _timeRepository.ContarAsync(filtros, cancellationToken);
+
+        return new TimesPaginadosDto
         {
             Total = total,
-            Page = page,
-            PageSize = pageSize,
-            Items = items
+            Page = filtros.Page,
+            PageSize = filtros.PageSize,
+            Items = times.Select(MapearListagem).ToList()
         };
     }
 
-    public async Task<object?> ObterTimePorIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<TimeDetalheDto?> ObterTimePorIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var time = await _timeRepository.ObterPorIdAsync(id, cancellationToken);
-        
-        if (time == null) return null;
-
-        return time;
+        return time is null ? null : MapearDetalhe(time);
     }
 
-    public async Task<object?> ObterTimePorUsuarioIdAsync(Guid usuarioId, CancellationToken cancellationToken = default)
+    public async Task<TimeDetalheDto?> ObterTimePorUsuarioIdAsync(Guid usuarioId, CancellationToken cancellationToken = default)
     {
-        // Para organizações, vamos buscar o time associado ao usuário através do TimeId
-        var usuario = await _context.Usuarios
-            .Include(u => u.Time)
-            .FirstOrDefaultAsync(u => u.Id == usuarioId, cancellationToken);
-        
-        if (usuario?.Time == null) return null;
-        
-        var time = await _context.Times
-            .Include(t => t.Jogadores)
-            .FirstOrDefaultAsync(t => t.Id == usuario.TimeId, cancellationToken);
-        
-        if (time == null) return null;
+        var usuario = await _usuarioRepository.ObterPorIdAsync(usuarioId);
+        if (usuario?.TimeId is null) return null;
 
-        return new
-        {
-            time.Id,
-            time.Nome,
-            time.Pais,
-            time.Tier,
-            time.Contratando,
-            Jogadores = time.Jogadores.Select(j => new
-            {
-                j.Id,
-                j.Apelido,
-                j.Pais,
-                j.Idade,
-                j.FuncaoPrincipal,
-                j.Status,
-                j.Disponibilidade,
-                j.ValorDeMercado,
-                j.FotoUrl
-            }).ToList()
-        };
+        var time = await _timeRepository.ObterPorIdAsync(usuario.TimeId.Value, cancellationToken);
+        return time is null ? null : MapearDetalhe(time);
     }
 
-    public async Task<object> CriarTimeAsync(object requestObj, CancellationToken cancellationToken = default)
+    public async Task<TimeDetalheDto> CriarTimeAsync(CriarTimeCommand request, CancellationToken cancellationToken = default)
     {
-        var request = (dynamic)requestObj;
         var time = new Time
         {
             Id = Guid.NewGuid(),
@@ -139,54 +57,61 @@ public class TimeService : ITimeService
         };
 
         var timeCriado = await _timeRepository.CriarAsync(time, cancellationToken);
-        return timeCriado;
+        return MapearDetalhe(timeCriado);
     }
 
-    public async Task<object?> AtualizarTimeAsync(Guid usuarioId, object requestObj, CancellationToken cancellationToken = default)
+    public async Task<TimeDetalheDto?> AtualizarTimeAsync(Guid usuarioId, AtualizarTimeCommand request, CancellationToken cancellationToken = default)
     {
-        var request = (dynamic)requestObj;
-        
-        // Buscar o time associado ao usuário
-        var usuario = await _context.Usuarios
-            .Include(u => u.Time)
-            .FirstOrDefaultAsync(u => u.Id == usuarioId, cancellationToken);
-        
-        if (usuario?.Time == null) return null;
-        
-        var time = await _context.Times
-            .Include(t => t.Jogadores)
-            .FirstOrDefaultAsync(t => t.Id == usuario.TimeId, cancellationToken);
-        
-        if (time == null) return null;
+        var usuario = await _usuarioRepository.ObterPorIdAsync(usuarioId);
+        if (usuario?.TimeId is null) return null;
 
-        // Atualizar apenas os campos fornecidos
-        if (request.Nome != null) time.Nome = request.Nome;
-        if (request.Pais != null) time.Pais = request.Pais;
+        var time = await _timeRepository.ObterRastreadoPorIdAsync(usuario.TimeId.Value, cancellationToken);
+        if (time is null) return null;
+
+        if (request.Nome is not null) time.Nome = request.Nome;
+        if (request.Pais is not null) time.Pais = request.Pais;
         if (request.Tier.HasValue) time.Tier = request.Tier;
         if (request.Contratando.HasValue) time.Contratando = request.Contratando;
-        if (request.LogoUrl != null) time.LogoUrl = request.LogoUrl;
+        if (request.LogoUrl is not null) time.LogoUrl = request.LogoUrl;
 
         var timeAtualizado = await _timeRepository.AtualizarAsync(time, cancellationToken);
+        return MapearDetalhe(timeAtualizado);
+    }
 
-        return new
+    private static TimeListagemDto MapearListagem(Time time)
+    {
+        return new TimeListagemDto
         {
-            timeAtualizado.Id,
-            timeAtualizado.Nome,
-            timeAtualizado.Pais,
-            timeAtualizado.Tier,
-            timeAtualizado.Contratando,
-            timeAtualizado.LogoUrl,
-            Jogadores = timeAtualizado.Jogadores.Select(j => new
+            Id = time.Id,
+            Nome = time.Nome,
+            Pais = time.Pais,
+            Tier = time.Tier,
+            Contratando = time.Contratando,
+            QuantidadeJogadores = time.Jogadores.Count
+        };
+    }
+
+    private static TimeDetalheDto MapearDetalhe(Time time)
+    {
+        return new TimeDetalheDto
+        {
+            Id = time.Id,
+            Nome = time.Nome,
+            Pais = time.Pais,
+            Tier = time.Tier,
+            Contratando = time.Contratando,
+            LogoUrl = time.LogoUrl,
+            Jogadores = time.Jogadores.Select(j => new JogadorNoTimeDto
             {
-                j.Id,
-                j.Apelido,
-                j.Pais,
-                j.Idade,
-                j.FuncaoPrincipal,
-                j.Status,
-                j.Disponibilidade,
-                j.ValorDeMercado,
-                j.FotoUrl
+                Id = j.Id,
+                Apelido = j.Apelido,
+                Pais = j.Pais,
+                Idade = j.Idade,
+                FuncaoPrincipal = j.FuncaoPrincipal,
+                Status = j.Status,
+                Disponibilidade = j.Disponibilidade,
+                ValorDeMercado = j.ValorDeMercado,
+                FotoUrl = j.FotoUrl
             }).ToList()
         };
     }

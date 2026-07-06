@@ -1,7 +1,6 @@
 using ESTop1.Domain;
+using ESTop1.Domain.DTOs;
 using ESTop1.Domain.Interfaces;
-using ESTop1.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 
 namespace ESTop1.Infrastructure.Services;
 
@@ -11,19 +10,14 @@ namespace ESTop1.Infrastructure.Services;
 public class InscricaoService : IInscricaoService
 {
     private readonly IJogadorRepository _jogadorRepository;
-    private readonly ITimeRepository _timeRepository;
-    private readonly AppDbContext _context;
 
-    public InscricaoService(IJogadorRepository jogadorRepository, ITimeRepository timeRepository, AppDbContext context)
+    public InscricaoService(IJogadorRepository jogadorRepository)
     {
         _jogadorRepository = jogadorRepository;
-        _timeRepository = timeRepository;
-        _context = context;
     }
 
-    public async Task<object> CriarInscricaoAsync(object requestObj, CancellationToken cancellationToken = default)
+    public async Task<InscricaoCriadaDto> CriarInscricaoAsync(CriarInscricaoCommand request, CancellationToken cancellationToken = default)
     {
-        var request = (dynamic)requestObj;
         var jogadorId = Guid.NewGuid();
         var jogador = new Jogador
         {
@@ -38,7 +32,6 @@ public class InscricaoService : IInscricaoService
             Visivel = false
         };
 
-        // Adicionar estatística geral se fornecida
         if (request.Rating.HasValue || request.KD.HasValue || request.PartidasJogadas.HasValue)
         {
             jogador.Estatisticas.Add(new Estatistica
@@ -54,30 +47,32 @@ public class InscricaoService : IInscricaoService
 
         await _jogadorRepository.CriarAsync(jogador, cancellationToken);
 
-        return new { inscricaoId = jogadorId, message = "Inscrição criada com sucesso" };
+        return new InscricaoCriadaDto
+        {
+            InscricaoId = jogadorId,
+            Message = "Inscrição criada com sucesso"
+        };
     }
 
-    public async Task<object> PagarInscricaoAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<InscricaoMensagemDto> PagarInscricaoAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var jogador = await _jogadorRepository.ObterPorIdAsync(id, cancellationToken);
-        if (jogador == null)
+        if (jogador is null)
         {
             throw new ArgumentException("Jogador não encontrado");
         }
 
-        // Mock: apenas retorna sucesso
-        return new { message = "Pagamento processado com sucesso" };
+        return new InscricaoMensagemDto { Message = "Pagamento processado com sucesso" };
     }
 
-    public async Task<object> AprovarInscricaoAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<InscricaoMensagemDto> AprovarInscricaoAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var sucesso = await _jogadorRepository.AlterarVisibilidadeAsync(id, true, cancellationToken);
-        
         if (!sucesso)
         {
             throw new ArgumentException("Jogador não encontrado");
         }
 
-        return new { message = "Inscrição aprovada com sucesso" };
+        return new InscricaoMensagemDto { Message = "Inscrição aprovada com sucesso" };
     }
 }
