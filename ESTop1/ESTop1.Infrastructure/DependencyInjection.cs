@@ -1,5 +1,4 @@
 using ESTop1.Domain.Interfaces;
-using ESTop1.Infrastructure.Interfaces;
 using ESTop1.Infrastructure.Repositories;
 using ESTop1.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<IInscricaoService, InscricaoService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IAssinaturaService, AssinaturaService>();
+        services.AddScoped<IOpenAIService, OpenAIService>();
 
         // FACEIT API
         services.AddHttpClient<IFaceitService, FaceitService>(client =>

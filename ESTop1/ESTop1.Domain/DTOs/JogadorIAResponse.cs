@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace ESTop1.Api.DTOs;
+namespace ESTop1.Domain.DTOs;
 
 public class JogadorIAResponse
 {

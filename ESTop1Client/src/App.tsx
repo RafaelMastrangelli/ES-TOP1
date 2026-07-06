@@ -8,8 +8,7 @@ import { ProtectedLayout } from "@/components/ProtectedLayout";
 import { 
   ProtectedRoute, 
   PublicOnlyRoute, 
-  OrganizationRoute, 
-  PlayerRoute 
+  OrganizationRoute
 } from "@/components/AuthGuard";
 import Index from "./pages/Index";
 import Jogadores from "./pages/Jogadores";

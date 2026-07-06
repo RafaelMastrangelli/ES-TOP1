@@ -128,11 +128,38 @@ public class JogadorRepository : IJogadorRepository
 
     public async Task<bool> AlterarVisibilidadeAsync(Guid id, bool visivel, CancellationToken cancellationToken = default)
     {
-        var jogador = await _context.Jogadores.FindAsync(id);
+        var jogador = await _context.Jogadores.FindAsync([id], cancellationToken);
         if (jogador == null) return false;
 
         jogador.Visivel = visivel;
         await _context.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    public async Task<Jogador?> ObterRastreadoPorIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await _context.Jogadores
+            .Include(j => j.TimeAtual)
+            .Include(j => j.Estatisticas)
+            .FirstOrDefaultAsync(j => j.Id == id, cancellationToken);
+    }
+
+    public async Task<int> AtualizarFotosAusentesAsync(Func<string, string> gerarFotoUrl, CancellationToken cancellationToken = default)
+    {
+        var jogadores = await _context.Jogadores
+            .Where(j => string.IsNullOrEmpty(j.FotoUrl))
+            .ToListAsync(cancellationToken);
+
+        foreach (var jogador in jogadores)
+        {
+            jogador.FotoUrl = gerarFotoUrl(jogador.Apelido);
+        }
+
+        if (jogadores.Count > 0)
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        return jogadores.Count;
     }
 }

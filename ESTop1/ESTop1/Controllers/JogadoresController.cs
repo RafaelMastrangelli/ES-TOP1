@@ -1,6 +1,6 @@
 ﻿using ESTop1.Api.Attributes;
 using ESTop1.Api.DTOs;
-using ESTop1.Api.Middleware;
+using ESTop1.Domain.DTOs;
 using ESTop1.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -32,8 +32,8 @@ public class JogadoresController : ControllerBase
     {
         try
         {
-            var (jogadores, total) = await _jogadorService.ListarJogadoresAsync(filtro, ct);
-            return Ok(new { total, page = filtro.Page, pageSize = filtro.PageSize, items = jogadores });
+            var resultado = await _jogadorService.ListarJogadoresAsync(filtro, ct);
+            return Ok(new { total = resultado.Total, page = filtro.Page, pageSize = filtro.PageSize, items = resultado.Items });
         }
         catch (Exception ex)
         {
@@ -92,8 +92,18 @@ public class JogadoresController : ControllerBase
     {
         try
         {
-            var resultado = await _jogadorService.CriarJogadorAsync(request, ct);
-            return CreatedAtAction(nameof(Obter), new { id = ((dynamic)resultado).Id }, resultado);
+            var resultado = await _jogadorService.CriarJogadorAsync(new CriarJogadorCommand
+            {
+                Apelido = request.Apelido,
+                Pais = request.Pais,
+                Idade = request.Idade,
+                FuncaoPrincipal = request.FuncaoPrincipal,
+                Status = request.Status,
+                Disponibilidade = request.Disponibilidade,
+                TimeAtualId = request.TimeAtualId,
+                ValorDeMercado = request.ValorDeMercado
+            }, ct);
+            return CreatedAtAction(nameof(Obter), new { id = resultado.Id }, resultado);
         }
         catch (Exception ex)
         {
@@ -143,10 +153,11 @@ public class JogadoresController : ControllerBase
     {
         try
         {
-            var jogadores = await _jogadorService.ListarJogadoresAsync(new { }, ct);
-            return Ok(new { 
-                total = jogadores.total, 
-                jogadores = jogadores.jogadores,
+            var jogadores = await _jogadorService.ListarJogadoresAsync(new FiltroJogador(), ct);
+            return Ok(new
+            {
+                total = jogadores.Total,
+                jogadores = jogadores.Items,
                 message = "Lista de todos os jogadores para debug"
             });
         }
@@ -197,8 +208,7 @@ public class JogadoresController : ControllerBase
             if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userIdGuid))
                 return Unauthorized();
 
-            // Criar objeto anônimo com tipos corretos para evitar problemas de deserialização
-            var dadosParaServico = new
+            var resultado = await _jogadorService.AtualizarJogadorAsync(userIdGuid, new AtualizarJogadorCommand
             {
                 Apelido = dados.Apelido,
                 Pais = dados.Pais,
@@ -208,9 +218,7 @@ public class JogadoresController : ControllerBase
                 Disponibilidade = dados.Disponibilidade,
                 ValorDeMercado = dados.ValorDeMercado,
                 FotoUrl = dados.FotoUrl
-            };
-
-            var resultado = await _jogadorService.AtualizarJogadorAsync(userIdGuid, dadosParaServico, ct);
+            }, ct);
             
             if (resultado == null)
                 return NotFound("Perfil de jogador não encontrado");

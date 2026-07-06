@@ -15,4 +15,6 @@ public interface IJogadorRepository
     Task<bool> ExcluirAsync(Guid id, CancellationToken cancellationToken = default);
     Task<int> ContarAsync(FiltroJogador filtro, CancellationToken cancellationToken = default);
     Task<bool> AlterarVisibilidadeAsync(Guid id, bool visivel, CancellationToken cancellationToken = default);
+    Task<Jogador?> ObterRastreadoPorIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<int> AtualizarFotosAusentesAsync(Func<string, string> gerarFotoUrl, CancellationToken cancellationToken = default);
 }

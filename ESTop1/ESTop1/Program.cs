@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Azure.AI.OpenAI;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,7 +36,21 @@ builder.Services.AddCors(options =>
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "ESTop1_Super_Secret_Key_For_JWT_Token_Generation_2024";
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    if (builder.Environment.IsDevelopment())
+    {
+        jwtKey = "ESTop1_Dev_Key_Only_For_Local_Development";
+        Console.WriteLine("AVISO: Jwt:Key não configurada. Usando chave de desenvolvimento.");
+    }
+    else
+    {
+        throw new InvalidOperationException(
+            "Jwt:Key deve ser configurada em produção (variável de ambiente ou appsettings).");
+    }
+}
+
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "ESTop1";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "ESTop1Client";
 
@@ -58,53 +71,37 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// OpenAI Configuration
-var openAIApiKey = builder.Configuration["OpenAI:ApiKey"] ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
-if (!string.IsNullOrEmpty(openAIApiKey))
-{
-    builder.Services.AddSingleton(new OpenAIClient(openAIApiKey));
-}
-
 var app = builder.Build();
 
 // Aplicar migra��es e popular banco
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    
-            // Verificar se o banco existe e criar se necessário
-            try
-            {
-                db.Database.EnsureCreated();
-                
-                // Fix: Add FotoUrl column if it doesn't exist
-                try
-                {
-                    await db.Database.ExecuteSqlRawAsync("ALTER TABLE Jogadores ADD COLUMN FotoUrl TEXT");
-                }
-                catch (Exception)
-                {
-                    // Column already exists, ignore
-                }
-                
-                AppDbContext.PopularBanco(db);
-                
-                // Atualizar fotos dos jogadores existentes para usar imagem padrão
-                var jogadoresSemFoto = db.Jogadores.Where(j => string.IsNullOrEmpty(j.FotoUrl) || j.FotoUrl.Contains("placeholder")).ToList();
-                foreach (var jogador in jogadoresSemFoto)
-                {
-                    jogador.FotoUrl = "/player-default.jpg"; // Imagem padrão temporária
-                }
-                if (jogadoresSemFoto.Any())
-                {
-                    db.SaveChanges();
-                    Console.WriteLine($"Fotos atualizadas para {jogadoresSemFoto.Count} jogadores (usando imagem padrão)");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Erro ao inicializar banco: {ex.Message}");
-            }
+
+    try
+    {
+        await db.Database.MigrateAsync();
+        AppDbContext.PopularBanco(db);
+
+        var jogadoresSemFoto = db.Jogadores
+            .Where(j => string.IsNullOrEmpty(j.FotoUrl) || j.FotoUrl.Contains("placeholder"))
+            .ToList();
+
+        foreach (var jogador in jogadoresSemFoto)
+        {
+            jogador.FotoUrl = "/player-default.jpg";
+        }
+
+        if (jogadoresSemFoto.Count > 0)
+        {
+            await db.SaveChangesAsync();
+            Console.WriteLine($"Fotos atualizadas para {jogadoresSemFoto.Count} jogadores (usando imagem padrão)");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Erro ao inicializar banco: {ex.Message}");
+    }
 }
 
 if (app.Environment.IsDevelopment())

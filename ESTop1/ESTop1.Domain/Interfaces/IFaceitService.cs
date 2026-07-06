@@ -1,6 +1,6 @@
 using ESTop1.Domain.DTOs;
 
-namespace ESTop1.Infrastructure.Interfaces;
+namespace ESTop1.Domain.Interfaces;
 
 public interface IFaceitService
 {

@@ -1,4 +1,4 @@
-using ESTop1.Infrastructure.Interfaces;
+using ESTop1.Domain.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ESTop1.Api.Controllers;

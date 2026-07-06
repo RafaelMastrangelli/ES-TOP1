@@ -1,6 +1,5 @@
 using ESTop1.Api.Attributes;
 using ESTop1.Api.DTOs;
-using ESTop1.Api.Middleware;
 using ESTop1.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

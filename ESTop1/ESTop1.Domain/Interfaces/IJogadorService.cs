@@ -1,4 +1,4 @@
-using ESTop1.Domain;
+using ESTop1.Domain.DTOs;
 
 namespace ESTop1.Domain.Interfaces;
 
@@ -7,12 +7,12 @@ namespace ESTop1.Domain.Interfaces;
 /// </summary>
 public interface IJogadorService
 {
-    Task<(IEnumerable<object> jogadores, int total)> ListarJogadoresAsync(object filtro, CancellationToken cancellationToken = default);
-    Task<object?> ObterJogadorPorIdAsync(Guid id, CancellationToken cancellationToken = default);
-    Task<object?> ObterJogadorPorUsuarioIdAsync(Guid usuarioId, CancellationToken cancellationToken = default);
-    Task<object> CriarJogadorAsync(object request, CancellationToken cancellationToken = default);
-    Task<object> CriarJogadorParaUsuarioAsync(Guid usuarioId, string nome, CancellationToken cancellationToken = default);
-    Task<object?> AtualizarJogadorAsync(Guid usuarioId, object request, CancellationToken cancellationToken = default);
+    Task<JogadoresPaginadosDto> ListarJogadoresAsync(FiltroJogador filtro, CancellationToken cancellationToken = default);
+    Task<JogadorDetalheDto?> ObterJogadorPorIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<JogadorDetalheDto?> ObterJogadorPorUsuarioIdAsync(Guid usuarioId, CancellationToken cancellationToken = default);
+    Task<JogadorResumoDto> CriarJogadorAsync(CriarJogadorCommand request, CancellationToken cancellationToken = default);
+    Task<JogadorResumoDto> CriarJogadorParaUsuarioAsync(Guid usuarioId, string nome, CancellationToken cancellationToken = default);
+    Task<JogadorDetalheDto?> AtualizarJogadorAsync(Guid usuarioId, AtualizarJogadorCommand request, CancellationToken cancellationToken = default);
     Task<bool> AlterarVisibilidadeJogadorAsync(Guid id, bool visivel, CancellationToken cancellationToken = default);
-    Task<object> AtualizarFotosJogadoresAsync(CancellationToken cancellationToken = default);
+    Task<AtualizarFotosResultDto> AtualizarFotosJogadoresAsync(CancellationToken cancellationToken = default);
 }

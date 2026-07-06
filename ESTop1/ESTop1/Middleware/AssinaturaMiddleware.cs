@@ -1,3 +1,4 @@
+using ESTop1.Api.Attributes;
 using ESTop1.Domain;
 using ESTop1.Domain.Interfaces;
 using System.Security.Claims;
@@ -78,16 +79,5 @@ public class AssinaturaMiddleware
 
         // Para outros recursos, verificar assinatura normalmente
         return await assinaturaService.VerificarAcessoAsync(userId, recurso);
-    }
-}
-
-[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
-public class RequerAssinaturaAttribute : Attribute
-{
-    public string Recurso { get; }
-
-    public RequerAssinaturaAttribute(string recurso)
-    {
-        Recurso = recurso;
     }
 }

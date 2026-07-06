@@ -1,7 +1,6 @@
 using ESTop1.Domain;
+using ESTop1.Domain.DTOs;
 using ESTop1.Domain.Interfaces;
-using ESTop1.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 
 namespace ESTop1.Infrastructure.Services;
 
@@ -11,142 +10,38 @@ namespace ESTop1.Infrastructure.Services;
 public class JogadorService : IJogadorService
 {
     private readonly IJogadorRepository _jogadorRepository;
-    private readonly ITimeRepository _timeRepository;
-    private readonly AppDbContext _context;
 
-    public JogadorService(IJogadorRepository jogadorRepository, ITimeRepository timeRepository, AppDbContext context)
+    public JogadorService(IJogadorRepository jogadorRepository)
     {
         _jogadorRepository = jogadorRepository;
-        _timeRepository = timeRepository;
-        _context = context;
     }
 
-    public async Task<(IEnumerable<object> jogadores, int total)> ListarJogadoresAsync(object filtroObj, CancellationToken cancellationToken = default)
+    public async Task<JogadoresPaginadosDto> ListarJogadoresAsync(FiltroJogador filtro, CancellationToken cancellationToken = default)
     {
-        var filtro = (dynamic)filtroObj;
         var jogadores = await _jogadorRepository.ListarAsync(filtro, cancellationToken);
         var total = await _jogadorRepository.ContarAsync(filtro, cancellationToken);
 
-        var jogadoresFormatados = new List<object>();
-        foreach (var j in jogadores)
+        return new JogadoresPaginadosDto
         {
-            decimal ratingGeral = 0;
-            foreach (var estatistica in j.Estatisticas)
-            {
-                if (estatistica.Periodo == "Geral")
-                {
-                    ratingGeral = estatistica.Rating;
-                    break;
-                }
-            }
-            
-            jogadoresFormatados.Add(new
-            {
-                j.Id,
-                j.Apelido,
-                j.Pais,
-                j.Idade,
-                Time = j.TimeAtual != null ? j.TimeAtual.Nome : null,
-                j.FuncaoPrincipal,
-                j.Status,
-                j.Disponibilidade,
-                j.ValorDeMercado,
-                j.FotoUrl,
-                RatingGeral = ratingGeral
-            });
-        }
-
-        return (jogadoresFormatados, total);
+            Total = total,
+            Items = jogadores.Select(MapearListagem).ToList()
+        };
     }
 
-    public async Task<object?> ObterJogadorPorIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<JogadorDetalheDto?> ObterJogadorPorIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var jogador = await _jogadorRepository.ObterPorIdAsync(id, cancellationToken);
-        
-        if (jogador == null) return null;
-
-        return new
-        {
-            jogador.Id,
-            jogador.Apelido,
-            jogador.Pais,
-            jogador.Idade,
-            jogador.FuncaoPrincipal,
-            jogador.Status,
-            jogador.Disponibilidade,
-            jogador.ValorDeMercado,
-            jogador.FotoUrl,
-            jogador.Visivel,
-            TimeAtual = jogador.TimeAtual != null ? new
-            {
-                jogador.TimeAtual.Id,
-                jogador.TimeAtual.Nome,
-                jogador.TimeAtual.Pais
-            } : null,
-            Estatisticas = jogador.Estatisticas.Select(e => new
-            {
-                e.Id,
-                e.Periodo,
-                e.Rating,
-                e.KD,
-                e.PartidasJogadas
-            }).ToList()
-        };
+        return jogador is null ? null : MapearDetalhe(jogador);
     }
 
-    public async Task<object?> ObterJogadorPorUsuarioIdAsync(Guid usuarioId, CancellationToken cancellationToken = default)
+    public async Task<JogadorDetalheDto?> ObterJogadorPorUsuarioIdAsync(Guid usuarioId, CancellationToken cancellationToken = default)
     {
-        // Para jogadores, vamos buscar um jogador que tenha o mesmo ID do usuário
-        // Isso assume que quando um jogador se registra, um registro de Jogador é criado com o mesmo ID
-        Console.WriteLine($"Buscando jogador com ID: {usuarioId}");
-        
-        var jogador = await _context.Jogadores
-            .Include(j => j.TimeAtual)
-            .Include(j => j.Estatisticas)
-            .FirstOrDefaultAsync(j => j.Id == usuarioId, cancellationToken);
-        
-        Console.WriteLine($"Jogador encontrado: {jogador != null}");
-        if (jogador != null)
-        {
-            Console.WriteLine($"Jogador: {jogador.Apelido}, ID: {jogador.Id}");
-        }
-        
-        if (jogador == null) return null;
-
-        return new
-        {
-            jogador.Id,
-            jogador.Apelido,
-            jogador.Pais,
-            jogador.Idade,
-            jogador.FuncaoPrincipal,
-            jogador.Status,
-            jogador.Disponibilidade,
-            jogador.ValorDeMercado,
-            jogador.FotoUrl,
-            jogador.Visivel,
-            TimeAtual = jogador.TimeAtual != null ? new
-            {
-                jogador.TimeAtual.Id,
-                jogador.TimeAtual.Nome,
-                jogador.TimeAtual.Pais,
-                jogador.TimeAtual.Tier,
-                jogador.TimeAtual.Contratando
-            } : null,
-            Estatisticas = jogador.Estatisticas.Select(e => new
-            {
-                e.Id,
-                e.Periodo,
-                e.Rating,
-                e.KD,
-                e.PartidasJogadas
-            }).ToList()
-        };
+        var jogador = await _jogadorRepository.ObterPorIdAsync(usuarioId, cancellationToken);
+        return jogador is null ? null : MapearDetalhe(jogador, incluirDetalhesTime: true);
     }
 
-    public async Task<object> CriarJogadorAsync(object requestObj, CancellationToken cancellationToken = default)
+    public async Task<JogadorResumoDto> CriarJogadorAsync(CriarJogadorCommand request, CancellationToken cancellationToken = default)
     {
-        var request = (dynamic)requestObj;
         var jogador = new Jogador
         {
             Id = Guid.NewGuid(),
@@ -162,131 +57,141 @@ public class JogadorService : IJogadorService
         };
 
         var jogadorCriado = await _jogadorRepository.CriarAsync(jogador, cancellationToken);
-
-        return new
-        {
-            jogadorCriado.Id,
-            jogadorCriado.Apelido,
-            jogadorCriado.Pais,
-            jogadorCriado.Idade,
-            jogadorCriado.FuncaoPrincipal,
-            jogadorCriado.Status,
-            jogadorCriado.Disponibilidade,
-            jogadorCriado.ValorDeMercado,
-            jogadorCriado.Visivel,
-            TimeAtual = jogadorCriado.TimeAtual != null ? new
-            {
-                jogadorCriado.TimeAtual.Id,
-                jogadorCriado.TimeAtual.Nome,
-                jogadorCriado.TimeAtual.Pais
-            } : null
-        };
+        return MapearResumo(jogadorCriado);
     }
 
-    public async Task<object> CriarJogadorParaUsuarioAsync(Guid usuarioId, string nome, CancellationToken cancellationToken = default)
+    public async Task<JogadorResumoDto> CriarJogadorParaUsuarioAsync(Guid usuarioId, string nome, CancellationToken cancellationToken = default)
     {
         var jogador = new Jogador
         {
-            Id = usuarioId, // Usar o mesmo ID do usuário
-            Apelido = nome, // Usar o nome do usuário como apelido inicial
+            Id = usuarioId,
+            Apelido = nome,
             Pais = "BR",
-            Idade = 18, // Idade padrão
-            FuncaoPrincipal = Funcao.Entry, // Função padrão
-            Status = StatusJogador.Amador, // Status padrão
-            Disponibilidade = Disponibilidade.Livre, // Disponibilidade padrão
-            ValorDeMercado = 10000, // Valor padrão
+            Idade = 18,
+            FuncaoPrincipal = Funcao.Entry,
+            Status = StatusJogador.Amador,
+            Disponibilidade = Disponibilidade.Livre,
+            ValorDeMercado = 10000,
             Visivel = true
         };
 
         var jogadorCriado = await _jogadorRepository.CriarAsync(jogador, cancellationToken);
-
-        return new
-        {
-            jogadorCriado.Id,
-            jogadorCriado.Apelido,
-            jogadorCriado.Pais,
-            jogadorCriado.Idade,
-            jogadorCriado.FuncaoPrincipal,
-            jogadorCriado.Status,
-            jogadorCriado.Disponibilidade,
-            jogadorCriado.ValorDeMercado,
-            jogadorCriado.Visivel
-        };
+        return MapearResumo(jogadorCriado);
     }
 
-    public async Task<object?> AtualizarJogadorAsync(Guid usuarioId, object requestObj, CancellationToken cancellationToken = default)
+    public async Task<JogadorDetalheDto?> AtualizarJogadorAsync(Guid usuarioId, AtualizarJogadorCommand request, CancellationToken cancellationToken = default)
     {
-        var request = (dynamic)requestObj;
-        
-        var jogador = await _context.Jogadores
-            .Include(j => j.TimeAtual)
-            .Include(j => j.Estatisticas)
-            .FirstOrDefaultAsync(j => j.Id == usuarioId, cancellationToken);
-        
-        if (jogador == null) return null;
+        var jogador = await _jogadorRepository.ObterRastreadoPorIdAsync(usuarioId, cancellationToken);
+        if (jogador is null) return null;
 
-        // Atualizar apenas os campos fornecidos
-        if (request.Apelido != null) jogador.Apelido = request.Apelido;
-        if (request.Pais != null) jogador.Pais = request.Pais;
-        if (request.Idade.HasValue) jogador.Idade = request.Idade;
-        if (request.FuncaoPrincipal != null) jogador.FuncaoPrincipal = request.FuncaoPrincipal;
-        if (request.Status != null) jogador.Status = request.Status;
-        if (request.Disponibilidade != null) jogador.Disponibilidade = request.Disponibilidade;
-        if (request.ValorDeMercado.HasValue) jogador.ValorDeMercado = request.ValorDeMercado;
-        if (request.FotoUrl != null) jogador.FotoUrl = request.FotoUrl;
+        if (request.Apelido is not null) jogador.Apelido = request.Apelido;
+        if (request.Pais is not null) jogador.Pais = request.Pais;
+        if (request.Idade.HasValue) jogador.Idade = request.Idade.Value;
+        if (request.FuncaoPrincipal.HasValue) jogador.FuncaoPrincipal = request.FuncaoPrincipal.Value;
+        if (request.Status.HasValue) jogador.Status = request.Status.Value;
+        if (request.Disponibilidade.HasValue) jogador.Disponibilidade = request.Disponibilidade.Value;
+        if (request.ValorDeMercado.HasValue) jogador.ValorDeMercado = request.ValorDeMercado.Value;
+        if (request.FotoUrl is not null) jogador.FotoUrl = request.FotoUrl;
 
         var jogadorAtualizado = await _jogadorRepository.AtualizarAsync(jogador, cancellationToken);
+        return MapearDetalhe(jogadorAtualizado, incluirDetalhesTime: true);
+    }
 
-        return new
+    public Task<bool> AlterarVisibilidadeJogadorAsync(Guid id, bool visivel, CancellationToken cancellationToken = default)
+    {
+        return _jogadorRepository.AlterarVisibilidadeAsync(id, visivel, cancellationToken);
+    }
+
+    public async Task<AtualizarFotosResultDto> AtualizarFotosJogadoresAsync(CancellationToken cancellationToken = default)
+    {
+        var total = await _jogadorRepository.AtualizarFotosAusentesAsync(
+            apelido => $"https://via.placeholder.com/300x300/1a1a1a/ffffff?text={Uri.EscapeDataString(apelido)}",
+            cancellationToken);
+
+        return new AtualizarFotosResultDto
         {
-            jogadorAtualizado.Id,
-            jogadorAtualizado.Apelido,
-            jogadorAtualizado.Pais,
-            jogadorAtualizado.Idade,
-            jogadorAtualizado.FuncaoPrincipal,
-            jogadorAtualizado.Status,
-            jogadorAtualizado.Disponibilidade,
-            jogadorAtualizado.ValorDeMercado,
-            jogadorAtualizado.FotoUrl,
-            jogadorAtualizado.Visivel,
-            TimeAtual = jogadorAtualizado.TimeAtual != null ? new
-            {
-                jogadorAtualizado.TimeAtual.Id,
-                jogadorAtualizado.TimeAtual.Nome,
-                jogadorAtualizado.TimeAtual.Pais,
-                jogadorAtualizado.TimeAtual.Tier,
-                jogadorAtualizado.TimeAtual.Contratando
-            } : null,
-            Estatisticas = jogadorAtualizado.Estatisticas.Select(e => new
-            {
-                e.Id,
-                e.Periodo,
-                e.Rating,
-                e.KD,
-                e.PartidasJogadas
-            }).ToList()
+            Message = $"Fotos atualizadas para {total} jogadores",
+            TotalAtualizado = total
         };
     }
 
-    public async Task<bool> AlterarVisibilidadeJogadorAsync(Guid id, bool visivel, CancellationToken cancellationToken = default)
+    private static JogadorListagemDto MapearListagem(Jogador jogador)
     {
-        return await _jogadorRepository.AlterarVisibilidadeAsync(id, visivel, cancellationToken);
+        var ratingGeral = jogador.Estatisticas
+            .FirstOrDefault(e => e.Periodo == "Geral")?.Rating ?? 0;
+
+        return new JogadorListagemDto
+        {
+            Id = jogador.Id,
+            Apelido = jogador.Apelido,
+            Pais = jogador.Pais,
+            Idade = jogador.Idade,
+            Time = jogador.TimeAtual?.Nome,
+            FuncaoPrincipal = jogador.FuncaoPrincipal,
+            Status = jogador.Status,
+            Disponibilidade = jogador.Disponibilidade,
+            ValorDeMercado = jogador.ValorDeMercado,
+            FotoUrl = jogador.FotoUrl,
+            RatingGeral = ratingGeral
+        };
     }
 
-    public async Task<object> AtualizarFotosJogadoresAsync(CancellationToken cancellationToken = default)
+    private static JogadorResumoDto MapearResumo(Jogador jogador)
     {
-        var jogadores = await _context.Jogadores.ToListAsync(cancellationToken);
-        
-        foreach (var jogador in jogadores)
+        return new JogadorResumoDto
         {
-            if (string.IsNullOrEmpty(jogador.FotoUrl))
-            {
-                jogador.FotoUrl = $"https://via.placeholder.com/300x300/1a1a1a/ffffff?text={Uri.EscapeDataString(jogador.Apelido)}";
-            }
-        }
-        
-        await _context.SaveChangesAsync(cancellationToken);
-        
-        return new { message = $"Fotos atualizadas para {jogadores.Count} jogadores" };
+            Id = jogador.Id,
+            Apelido = jogador.Apelido,
+            Pais = jogador.Pais,
+            Idade = jogador.Idade,
+            FuncaoPrincipal = jogador.FuncaoPrincipal,
+            Status = jogador.Status,
+            Disponibilidade = jogador.Disponibilidade,
+            ValorDeMercado = jogador.ValorDeMercado,
+            Visivel = jogador.Visivel,
+            TimeAtual = jogador.TimeAtual is null ? null : MapearTime(jogador.TimeAtual)
+        };
+    }
+
+    private static JogadorDetalheDto MapearDetalhe(Jogador jogador, bool incluirDetalhesTime = false)
+    {
+        return new JogadorDetalheDto
+        {
+            Id = jogador.Id,
+            Apelido = jogador.Apelido,
+            Pais = jogador.Pais,
+            Idade = jogador.Idade,
+            FuncaoPrincipal = jogador.FuncaoPrincipal,
+            Status = jogador.Status,
+            Disponibilidade = jogador.Disponibilidade,
+            ValorDeMercado = jogador.ValorDeMercado,
+            FotoUrl = jogador.FotoUrl,
+            Visivel = jogador.Visivel,
+            TimeAtual = jogador.TimeAtual is null
+                ? null
+                : MapearTime(jogador.TimeAtual, incluirDetalhesTime),
+            Estatisticas = jogador.Estatisticas
+                .Select(e => new EstatisticaDto
+                {
+                    Id = e.Id,
+                    Periodo = e.Periodo,
+                    Rating = e.Rating,
+                    KD = e.KD,
+                    PartidasJogadas = e.PartidasJogadas
+                })
+                .ToList()
+        };
+    }
+
+    private static TimeResumoDto MapearTime(Time time, bool incluirDetalhes = false)
+    {
+        return new TimeResumoDto
+        {
+            Id = time.Id,
+            Nome = time.Nome,
+            Pais = time.Pais,
+            Tier = incluirDetalhes ? time.Tier : null,
+            Contratando = incluirDetalhes ? time.Contratando : null
+        };
     }
 }
