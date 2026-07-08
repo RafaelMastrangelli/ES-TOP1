@@ -1,28 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
-
-interface User {
-  id: string;
-  nome: string;
-  email: string;
-  tipo: string;
-}
-
-interface Assinatura {
-  id: string;
-  plano: string;
-  status: string;
-  dataInicio: string;
-  dataFim: string;
-  valorMensal: number;
-}
+import { AuthAssinatura, AuthMeResponse, AuthResponse, AuthUser, getApiErrorMessage } from '../types';
 
 interface AuthState {
-  user: User | null;
-  assinatura: Assinatura | null;
+  user: AuthUser | null;
+  assinatura: AuthAssinatura | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+}
+
+interface LocationState {
+  from?: {
+    pathname: string;
+  };
 }
 
 export const useAuth = () => {
@@ -40,11 +31,9 @@ export const useAuth = () => {
       try {
         const token = localStorage.getItem('auth_token');
         if (token) {
-          // Verificar se o token ainda é válido
-          const response = await api.get('/auth/me');
-          console.log('Resposta do /auth/me:', response.data);
-          
-          if (response.data && response.data.usuario) {
+          const response = await api.get<AuthMeResponse>('/auth/me');
+
+          if (response.data?.usuario) {
             setAuthState({
               user: response.data.usuario,
               assinatura: response.data.assinatura,
@@ -52,7 +41,6 @@ export const useAuth = () => {
               isLoading: false
             });
           } else {
-            console.log('Token inválido ou resposta vazia');
             localStorage.removeItem('auth_token');
             setAuthState({
               user: null,
@@ -62,7 +50,6 @@ export const useAuth = () => {
             });
           }
         } else {
-          // Se não há token, definir como não autenticado imediatamente
           setAuthState({
             user: null,
             assinatura: null,
@@ -87,63 +74,57 @@ export const useAuth = () => {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await api.post('/auth/login', { email, senha: password });
-      console.log('Resposta do login:', response.data);
-      
-      if (response.data.Token) {
+      const response = await api.post<AuthResponse>('/auth/login', { email, senha: password });
+
+      if (response.data?.Token) {
         localStorage.setItem('auth_token', response.data.Token);
-        
+
         setAuthState({
           user: response.data.Usuario,
           assinatura: response.data.Assinatura,
           isAuthenticated: true,
           isLoading: false
         });
-        
-        // Redirecionar para a página que o usuário tentou acessar ou para a home
-        const from = location.state?.from?.pathname || '/';
+
+        const from = (location.state as LocationState | null)?.from?.pathname || '/';
         navigate(from, { replace: true });
-        
-        return { success: true };
-      } else {
-        console.log('Token não encontrado na resposta:', response.data);
-        return { success: false, error: 'Resposta inválida do servidor' };
+
+        return { success: true as const };
       }
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Erro ao fazer login';
-      return { success: false, error: errorMessage };
+
+      return { success: false as const, error: 'Resposta inválida do servidor' };
+    } catch (error: unknown) {
+      return { success: false as const, error: getApiErrorMessage(error, 'Erro ao fazer login') };
     }
   };
 
   const register = async (nome: string, email: string, password: string, tipo: string = 'Jogador') => {
     try {
-      const response = await api.post('/auth/registro', { 
-        nome, 
-        email, 
-        senha: password, 
-        tipo 
+      const response = await api.post<AuthResponse>('/auth/registro', {
+        nome,
+        email,
+        senha: password,
+        tipo
       });
-      
-      if (response.data.Token) {
+
+      if (response.data?.Token) {
         localStorage.setItem('auth_token', response.data.Token);
-        
+
         setAuthState({
           user: response.data.Usuario,
           assinatura: response.data.Assinatura,
           isAuthenticated: true,
           isLoading: false
         });
-        
-        // Redirecionar para a home após registro
+
         navigate('/', { replace: true });
-        
-        return { success: true };
-      } else {
-        return { success: false, error: 'Resposta inválida do servidor' };
+
+        return { success: true as const };
       }
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Erro ao criar conta';
-      return { success: false, error: errorMessage };
+
+      return { success: false as const, error: 'Resposta inválida do servidor' };
+    } catch (error: unknown) {
+      return { success: false as const, error: getApiErrorMessage(error, 'Erro ao criar conta') };
     }
   };
 
@@ -155,7 +136,6 @@ export const useAuth = () => {
       isAuthenticated: false,
       isLoading: false
     });
-    // Redirecionar para a home após logout
     navigate('/', { replace: true });
   };
 

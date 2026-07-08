@@ -34,7 +34,10 @@ const Inscricao = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleChange = (field: keyof CriarInscricaoRequest, value: any) => {
+  const handleChange = <K extends keyof CriarInscricaoRequest>(
+    field: K,
+    value: CriarInscricaoRequest[K]
+  ) => {
     setFormData(prev => ({
       ...prev,
       [field]: value

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
-import { Time, Jogador } from '../types';
+import { Time, Jogador, getApiErrorMessage } from '../types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -28,8 +28,8 @@ const PerfilOrganizacao: React.FC = () => {
           setTime(time);
           setJogadores(time.jogadores || []);
         }
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Erro ao carregar perfil');
+      } catch (err: unknown) {
+        setError(getApiErrorMessage(err, 'Erro ao carregar perfil'));
       } finally {
         setLoading(false);
       }

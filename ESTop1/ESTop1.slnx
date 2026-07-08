@@ -3,5 +3,6 @@
     <Project Path="ESTop1/ESTop1.Api.csproj" />
   </Folder>
   <Project Path="ESTop1.Domain/ESTop1.Domain.csproj" />
+  <Project Path="ESTop1.Domain.Tests/ESTop1.Domain.Tests.csproj" />
   <Project Path="ESTop1.Infrastructure/ESTop1.Infrastructure.csproj" />
 </Solution>

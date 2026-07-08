@@ -71,7 +71,7 @@ const request = async <T>(
 
 export const api = {
   // Métodos HTTP básicos para usar com axios
-  get: async (url: string) => {
+  get: async <T = unknown>(url: string) => {
     const token = localStorage.getItem('auth_token');
     const response = await fetch(`${API_BASE_URL}${url}`, {
       headers: {
@@ -84,7 +84,7 @@ export const api = {
       await throwApiError(response);
     }
     
-    return { data: await response.json() };
+    return { data: await response.json() as T };
   },
 
   post: async <T = unknown>(url: string, data?: unknown) => {
@@ -305,43 +305,22 @@ export const api = {
   },
 
   openai: {
-    buscarJogadores: async (consulta: string): Promise<{
-      jogadores: any[];
-      total: number;
-      consultaOriginal: string;
-      consultaIA: string;
-    }> => {
-      return request<{
-        jogadores: any[];
-        total: number;
-        consultaOriginal: string;
-        consultaIA: string;
-      }>(`${API_BASE_URL}/integracoes/openai/buscar-jogadores?consulta=${encodeURIComponent(consulta)}`);
+    buscarJogadores: async (consulta: string): Promise<OpenAIBuscaJogadoresResponse> => {
+      return request<OpenAIBuscaJogadoresResponse>(
+        `${API_BASE_URL}/integracoes/openai/buscar-jogadores?consulta=${encodeURIComponent(consulta)}`
+      );
     },
 
-    // TESTE: Endpoint para desenvolvimento sem verificação de assinatura
-    buscarJogadoresTeste: async (consulta: string): Promise<{
-      jogadores: any[];
-      total: number;
-      consultaOriginal: string;
-      consultaIA: string;
-    }> => {
-      return request<{
-        jogadores: any[];
-        total: number;
-        consultaOriginal: string;
-        consultaIA: string;
-      }>(`${API_BASE_URL}/integracoes/openai/teste/buscar-jogadores?consulta=${encodeURIComponent(consulta)}`);
+    buscarJogadoresTeste: async (consulta: string): Promise<OpenAIBuscaJogadoresResponse> => {
+      return request<OpenAIBuscaJogadoresResponse>(
+        `${API_BASE_URL}/integracoes/openai/teste/buscar-jogadores?consulta=${encodeURIComponent(consulta)}`
+      );
     },
 
-    sugerirFiltros: async (descricao: string): Promise<{
-      filtros: any;
-      descricaoOriginal: string;
-    }> => {
-      return request<{
-        filtros: any;
-        descricaoOriginal: string;
-      }>(`${API_BASE_URL}/integracoes/openai/sugerir-filtros?descricao=${encodeURIComponent(descricao)}`);
+    sugerirFiltros: async (descricao: string): Promise<OpenAISugerirFiltrosResponse> => {
+      return request<OpenAISugerirFiltrosResponse>(
+        `${API_BASE_URL}/integracoes/openai/sugerir-filtros?descricao=${encodeURIComponent(descricao)}`
+      );
     },
   },
 };

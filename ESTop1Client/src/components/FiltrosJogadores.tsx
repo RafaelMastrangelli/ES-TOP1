@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FiltrosJogadores as Filtros } from '@/types';
+import { FiltrosJogadores as Filtros, StatusJogador, Disponibilidade, FuncaoPrincipal } from '@/types';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -129,7 +129,7 @@ const FiltrosJogadores = ({ filtros, onChange, onFaceitSearch, onAISearch }: Fil
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         <Select
           value={filtros.status || ''}
-          onValueChange={(value) => onChange({ ...filtros, status: value as any, page: 1 })}
+          onValueChange={(value) => onChange({ ...filtros, status: value as StatusJogador, page: 1 })}
         >
           <SelectTrigger>
             <SelectValue placeholder="Status" />
@@ -143,7 +143,7 @@ const FiltrosJogadores = ({ filtros, onChange, onFaceitSearch, onAISearch }: Fil
 
         <Select
           value={filtros.disp || ''}
-          onValueChange={(value) => onChange({ ...filtros, disp: value as any, page: 1 })}
+          onValueChange={(value) => onChange({ ...filtros, disp: value as Disponibilidade, page: 1 })}
         >
           <SelectTrigger>
             <SelectValue placeholder="Disponibilidade" />
@@ -157,7 +157,7 @@ const FiltrosJogadores = ({ filtros, onChange, onFaceitSearch, onAISearch }: Fil
 
         <Select
           value={filtros.funcao || ''}
-          onValueChange={(value) => onChange({ ...filtros, funcao: value as any, page: 1 })}
+          onValueChange={(value) => onChange({ ...filtros, funcao: value as FuncaoPrincipal, page: 1 })}
         >
           <SelectTrigger>
             <SelectValue placeholder="Função" />
@@ -173,7 +173,11 @@ const FiltrosJogadores = ({ filtros, onChange, onFaceitSearch, onAISearch }: Fil
 
         <Select
           value={filtros.ordenar || ''}
-          onValueChange={(value) => onChange({ ...filtros, ordenar: value as any, page: 1 })}
+          onValueChange={(value) => onChange({
+            ...filtros,
+            ordenar: value as NonNullable<FiltrosJogadores['ordenar']>,
+            page: 1
+          })}
         >
           <SelectTrigger>
             <SelectValue placeholder="Ordenar por" />

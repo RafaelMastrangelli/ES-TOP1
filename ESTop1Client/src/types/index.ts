@@ -261,3 +261,19 @@ export interface OpenAISugerirFiltrosResponse {
   descricaoOriginal: string;
   erro?: string;
 }
+
+export const getApiErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof ApiRequestError) {
+    return error.response?.data?.message || error.message || fallback;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
+export const getApiErrorStatus = (error: unknown): number | undefined => {
+  return error instanceof ApiRequestError ? error.response?.status : undefined;
+};

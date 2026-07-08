@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { FiltrosJogadores as Filtros, FaceitSearchResult } from '@/types';
+import { FiltrosJogadores as Filtros, FaceitSearchResult, OpenAIBuscaJogadoresResponse, getApiErrorMessage, getApiErrorStatus } from '@/types';
 import JogadorCard from '@/components/JogadorCard';
 import FiltrosJogadores from '@/components/FiltrosJogadores';
 import FaceitPlayerCard from '@/components/FaceitPlayerCard';
@@ -16,7 +16,7 @@ const Jogadores = () => {
 
   const [faceitData, setFaceitData] = useState<FaceitSearchResult | null>(null);
   const [isLoadingFaceit, setIsLoadingFaceit] = useState(false);
-  const [aiData, setAiData] = useState<any>(null);
+  const [aiData, setAiData] = useState<OpenAIBuscaJogadoresResponse | null>(null);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [activeSearchType, setActiveSearchType] = useState<'local' | 'faceit' | 'ia' | null>(null);
 
@@ -75,16 +75,16 @@ const Jogadores = () => {
       // Usar endpoint de teste para desenvolvimento (sem verificação de assinatura)
       const result = await api.openai.buscarJogadoresTeste(consulta);
       setAiData(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao buscar com IA:', error);
-      
-      // Handle specific error cases
-      if (error.response?.status === 403) {
+
+      const status = getApiErrorStatus(error);
+      if (status === 403) {
         alert('Acesso negado: Você precisa de uma assinatura ativa com acesso à busca por IA para usar esta funcionalidade.');
-      } else if (error.response?.status === 401) {
+      } else if (status === 401) {
         alert('Não autorizado: Faça login novamente para continuar.');
       } else {
-        alert(`Erro ao buscar jogadores com IA: ${error.message || 'Erro desconhecido'}`);
+        alert(`Erro ao buscar jogadores com IA: ${getApiErrorMessage(error, 'Erro desconhecido')}`);
       }
       
       setAiData({ jogadores: [], total: 0, consultaOriginal: consulta, consultaIA: '' });
@@ -197,8 +197,23 @@ const Jogadores = () => {
               
               {aiData.jogadores.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {aiData.jogadores.map((jogador: any) => (
-                    <JogadorCard key={jogador.id} jogador={jogador} />
+                  {aiData.jogadores.map((jogador) => (
+                    <JogadorCard
+                      key={jogador.id}
+                      jogador={{
+                        id: jogador.id,
+                        apelido: jogador.apelido,
+                        pais: jogador.pais,
+                        idade: jogador.idade,
+                        funcaoPrincipal: jogador.funcaoPrincipal,
+                        status: jogador.status,
+                        disponibilidade: jogador.disponibilidade,
+                        valorDeMercado: jogador.valorDeMercado,
+                        fotoUrl: jogador.fotoUrl,
+                        visivel: true,
+                        ratingGeral: jogador.rating,
+                      }}
+                    />
                   ))}
                 </div>
               ) : (

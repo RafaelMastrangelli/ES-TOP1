@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
-import { Jogador } from '../types';
+import { Jogador, Disponibilidade, FuncaoPrincipal, StatusJogador, getApiErrorMessage } from '../types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -28,14 +28,16 @@ const EditarPerfilJogador: React.FC<EditarPerfilJogadorProps> = ({
     apelido: jogador.apelido || '',
     pais: jogador.pais || 'BR',
     idade: jogador.idade || 18,
-    funcaoPrincipal: jogador.funcaoPrincipal || 'Entry',
-    status: jogador.status || 'Amador',
-    disponibilidade: jogador.disponibilidade || 'Livre',
+    funcaoPrincipal: jogador.funcaoPrincipal || 'Entry' as FuncaoPrincipal,
+    status: jogador.status || 'Amador' as StatusJogador,
+    disponibilidade: jogador.disponibilidade || 'Livre' as Disponibilidade,
     valorDeMercado: jogador.valorDeMercado || 0,
     fotoUrl: jogador.fotoUrl || ''
   });
 
-  const handleInputChange = (field: string, value: any) => {
+  type JogadorFormData = typeof formData;
+
+  const handleInputChange = <K extends keyof JogadorFormData>(field: K, value: JogadorFormData[K]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -48,7 +50,7 @@ const EditarPerfilJogador: React.FC<EditarPerfilJogadorProps> = ({
 
     try {
       // Filtrar dados para enviar apenas campos válidos
-      const dadosParaEnviar: any = {};
+      const dadosParaEnviar: Partial<Jogador> = {};
       
       if (formData.apelido && formData.apelido.trim()) {
         dadosParaEnviar.apelido = formData.apelido.trim();
@@ -79,8 +81,8 @@ const EditarPerfilJogador: React.FC<EditarPerfilJogadorProps> = ({
       onSuccess(dadosAtualizados);
       toast.success('Perfil atualizado com sucesso!');
       onClose();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Erro ao atualizar perfil');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Erro ao atualizar perfil'));
     } finally {
       setLoading(false);
     }

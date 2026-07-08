@@ -2,7 +2,6 @@ using Azure.AI.OpenAI;
 using ESTop1.Domain;
 using ESTop1.Domain.DTOs;
 using ESTop1.Domain.Interfaces;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
@@ -12,26 +11,26 @@ namespace ESTop1.Infrastructure.Services;
 public class OpenAIService : IOpenAIService
 {
     private const string DefaultFotoUrl = "/player-default.jpg";
-    private readonly AppDbContext _db;
+    private readonly IJogadorRepository _jogadorRepository;
+    private readonly ITimeRepository _timeRepository;
     private readonly IConfiguration _configuration;
     private readonly ILogger<OpenAIService> _logger;
 
-    public OpenAIService(AppDbContext db, IConfiguration configuration, ILogger<OpenAIService> logger)
+    public OpenAIService(
+        IJogadorRepository jogadorRepository,
+        ITimeRepository timeRepository,
+        IConfiguration configuration,
+        ILogger<OpenAIService> logger)
     {
-        _db = db;
+        _jogadorRepository = jogadorRepository;
+        _timeRepository = timeRepository;
         _configuration = configuration;
         _logger = logger;
     }
 
     public async Task<(int StatusCode, object Payload)> BuscarJogadoresAsync(string consulta, CancellationToken cancellationToken = default)
     {
-        var consultaNormalizada = consulta.Trim().ToLowerInvariant();
-
-        var jogadorExistente = await _db.Jogadores
-            .AsNoTracking()
-            .Include(j => j.TimeAtual)
-            .Include(j => j.Estatisticas)
-            .FirstOrDefaultAsync(j => j.Apelido.ToLower().Trim() == consultaNormalizada && j.Visivel, cancellationToken);
+        var jogadorExistente = await _jogadorRepository.ObterPorApelidoAsync(consulta, cancellationToken);
 
         if (jogadorExistente is not null)
         {
@@ -40,9 +39,7 @@ public class OpenAIService : IOpenAIService
 
         var dadosIA = await BuscarDadosJogadorPorCampos(consulta, cancellationToken);
 
-        var jogadorConcorrente = await _db.Jogadores
-            .AsNoTracking()
-            .FirstOrDefaultAsync(j => j.Apelido.ToLower().Trim() == consultaNormalizada && j.Visivel, cancellationToken);
+        var jogadorConcorrente = await _jogadorRepository.ObterPorApelidoAsync(consulta, cancellationToken);
 
         if (jogadorConcorrente is not null)
         {
@@ -63,46 +60,18 @@ public class OpenAIService : IOpenAIService
             Visivel = true
         };
 
-        var novaEstatistica = CriarEstatisticaInicial(novoJogador.Id, dadosIA.Rating);
+        novoJogador.Estatisticas.Add(CriarEstatisticaInicial(novoJogador.Id, dadosIA.Rating));
+        await AssociarTimeAsync(novoJogador, dadosIA.TimeAtual, dadosIA.Pais, cancellationToken);
 
-        if (!string.IsNullOrEmpty(dadosIA.TimeAtual))
-        {
-            var timeExistente = await _db.Times
-                .FirstOrDefaultAsync(t => t.Nome.ToLower() == dadosIA.TimeAtual.ToLower(), cancellationToken);
+        var estatistica = novoJogador.Estatisticas.First();
+        var jogadorCriado = await _jogadorRepository.CriarAsync(novoJogador, cancellationToken);
 
-            if (timeExistente is not null)
-            {
-                novoJogador.TimeAtualId = timeExistente.Id;
-            }
-            else
-            {
-                var novoTime = new Time
-                {
-                    Id = Guid.NewGuid(),
-                    Nome = dadosIA.TimeAtual,
-                    Pais = dadosIA.Pais
-                };
-                _db.Times.Add(novoTime);
-                novoJogador.TimeAtualId = novoTime.Id;
-            }
-        }
-
-        _db.Jogadores.Add(novoJogador);
-        _db.Estatisticas.Add(novaEstatistica);
-        await _db.SaveChangesAsync(cancellationToken);
-
-        return (201, CriarPayloadJogadorCriado(novoJogador, novaEstatistica, dadosIA, consulta));
+        return (201, CriarPayloadJogadorCriado(jogadorCriado, estatistica, dadosIA, consulta));
     }
 
     public async Task<(int StatusCode, object Payload)> BuscarJogadoresTesteAsync(string consulta, CancellationToken cancellationToken = default)
     {
-        var consultaNormalizada = consulta.Trim().ToLowerInvariant();
-
-        var jogadorExistente = await _db.Jogadores
-            .AsNoTracking()
-            .Include(j => j.TimeAtual)
-            .Include(j => j.Estatisticas)
-            .FirstOrDefaultAsync(j => j.Apelido.ToLower().Trim() == consultaNormalizada && j.Visivel, cancellationToken);
+        var jogadorExistente = await _jogadorRepository.ObterPorApelidoAsync(consulta, cancellationToken);
 
         if (jogadorExistente is not null)
         {
@@ -111,9 +80,7 @@ public class OpenAIService : IOpenAIService
 
         var dadosIA = await BuscarDadosJogadorPorCampos(consulta, cancellationToken);
 
-        var jogadorConcorrente = await _db.Jogadores
-            .AsNoTracking()
-            .FirstOrDefaultAsync(j => j.Apelido.ToLower().Trim() == consultaNormalizada && j.Visivel, cancellationToken);
+        var jogadorConcorrente = await _jogadorRepository.ObterPorApelidoAsync(consulta, cancellationToken);
 
         if (jogadorConcorrente is not null)
         {
@@ -134,13 +101,12 @@ public class OpenAIService : IOpenAIService
             Visivel = true
         };
 
-        var novaEstatistica = CriarEstatisticaInicial(novoJogador.Id, dadosIA.Rating);
+        novoJogador.Estatisticas.Add(CriarEstatisticaInicial(novoJogador.Id, dadosIA.Rating));
 
-        _db.Jogadores.Add(novoJogador);
-        _db.Estatisticas.Add(novaEstatistica);
-        await _db.SaveChangesAsync(cancellationToken);
+        var estatistica = novoJogador.Estatisticas.First();
+        var jogadorCriado = await _jogadorRepository.CriarAsync(novoJogador, cancellationToken);
 
-        return (201, CriarPayloadJogadorCriado(novoJogador, novaEstatistica, dadosIA, consulta));
+        return (201, CriarPayloadJogadorCriado(jogadorCriado, estatistica, dadosIA, consulta));
     }
 
     public async Task<(int StatusCode, object Payload)> SugerirFiltrosAsync(string descricao, CancellationToken cancellationToken = default)
@@ -305,6 +271,30 @@ Se algum filtro não for aplicável, omita-o do JSON.";
         }
 
         return new OpenAIClient(apiKey);
+    }
+
+    private async Task AssociarTimeAsync(Jogador jogador, string? nomeTime, string pais, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(nomeTime))
+        {
+            return;
+        }
+
+        var timeExistente = await _timeRepository.ObterPorNomeAsync(nomeTime, cancellationToken);
+        if (timeExistente is not null)
+        {
+            jogador.TimeAtualId = timeExistente.Id;
+            return;
+        }
+
+        var novoTime = await _timeRepository.CriarAsync(new Time
+        {
+            Id = Guid.NewGuid(),
+            Nome = nomeTime,
+            Pais = pais
+        }, cancellationToken);
+
+        jogador.TimeAtualId = novoTime.Id;
     }
 
     private static Estatistica CriarEstatisticaInicial(Guid jogadorId, decimal rating)

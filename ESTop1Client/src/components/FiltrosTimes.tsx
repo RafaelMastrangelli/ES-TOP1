@@ -51,7 +51,7 @@ const FiltrosTimes = ({ filtros, onChange }: FiltrosTimesProps) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         <Select
           value={filtros.tier || ''}
-          onValueChange={(value) => onChange({ ...filtros, tier: value as any, page: 1 })}
+          onValueChange={(value) => onChange({ ...filtros, tier: value as FiltrosTimes['tier'], page: 1 })}
         >
           <SelectTrigger>
             <SelectValue placeholder="Tier" />
@@ -65,7 +65,7 @@ const FiltrosTimes = ({ filtros, onChange }: FiltrosTimesProps) => {
 
         <Select
           value={filtros.contratando || ''}
-          onValueChange={(value) => onChange({ ...filtros, contratando: value as any, page: 1 })}
+          onValueChange={(value) => onChange({ ...filtros, contratando: value as FiltrosTimes['contratando'], page: 1 })}
         >
           <SelectTrigger>
             <SelectValue placeholder="Contratando" />
@@ -78,7 +78,11 @@ const FiltrosTimes = ({ filtros, onChange }: FiltrosTimesProps) => {
 
         <Select
           value={filtros.ordenar || ''}
-          onValueChange={(value) => onChange({ ...filtros, ordenar: value as any, page: 1 })}
+          onValueChange={(value) => onChange({
+            ...filtros,
+            ordenar: value as NonNullable<FiltrosTimes['ordenar']>,
+            page: 1
+          })}
         >
           <SelectTrigger>
             <SelectValue placeholder="Ordenar por" />

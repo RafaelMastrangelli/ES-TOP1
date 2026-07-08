@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
-import { Time } from '../types';
+import { Time, getApiErrorMessage } from '../types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -33,7 +33,9 @@ const EditarPerfilTime: React.FC<EditarPerfilTimeProps> = ({
     logoUrl: time.logoUrl || ''
   });
 
-  const handleInputChange = (field: string, value: any) => {
+  type TimeFormData = typeof formData;
+
+  const handleInputChange = <K extends keyof TimeFormData>(field: K, value: TimeFormData[K]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -49,8 +51,8 @@ const EditarPerfilTime: React.FC<EditarPerfilTimeProps> = ({
       onSuccess(dadosAtualizados);
       toast.success('Time atualizado com sucesso!');
       onClose();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Erro ao atualizar time');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Erro ao atualizar time'));
     } finally {
       setLoading(false);
     }
