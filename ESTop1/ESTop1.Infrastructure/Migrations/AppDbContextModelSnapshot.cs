@@ -135,6 +135,62 @@ namespace ESTop1.Infrastructure.Migrations
                     b.ToTable("Jogadores");
                 });
 
+            modelBuilder.Entity("ESTop1.Domain.Pagamento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("AssinaturaId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CheckoutUrl")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExpiraEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("IdExterno")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MetodoPagamento")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("PagoEm")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PixQrCode")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PixQrCodeBase64")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Plano")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Valor")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdExterno");
+
+                    b.HasIndex("UsuarioId", "Status");
+
+                    b.ToTable("Pagamentos");
+                });
+
             modelBuilder.Entity("ESTop1.Domain.Plano", b =>
                 {
                     b.Property<Guid>("Id")
@@ -180,6 +236,41 @@ namespace ESTop1.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Planos");
+                });
+
+            modelBuilder.Entity("ESTop1.Domain.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReplacedByTokenHash")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId", "RevokedAt");
+
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("ESTop1.Domain.Time", b =>
@@ -284,6 +375,28 @@ namespace ESTop1.Infrastructure.Migrations
                         .HasForeignKey("TimeAtualId");
 
                     b.Navigation("TimeAtual");
+                });
+
+            modelBuilder.Entity("ESTop1.Domain.Pagamento", b =>
+                {
+                    b.HasOne("ESTop1.Domain.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("ESTop1.Domain.RefreshToken", b =>
+                {
+                    b.HasOne("ESTop1.Domain.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("ESTop1.Domain.Usuario", b =>

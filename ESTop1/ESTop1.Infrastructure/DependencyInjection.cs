@@ -4,7 +4,6 @@ using ESTop1.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Http;
 
 namespace ESTop1.Infrastructure;
 
@@ -12,26 +11,42 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
     {
-        // Banco de dados
         services.AddDbContext<AppDbContext>(opt =>
             opt.UseSqlite(config.GetConnectionString("Padrao"), b => b.MigrationsAssembly("ESTop1.Infrastructure")));
 
-        // Repositórios
         services.AddScoped<IJogadorRepository, JogadorRepository>();
         services.AddScoped<ITimeRepository, TimeRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<IAssinaturaRepository, AssinaturaRepository>();
         services.AddScoped<IPlanoRepository, PlanoRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IPagamentoRepository, PagamentoRepository>();
 
-        // Serviços
         services.AddScoped<IJogadorService, JogadorService>();
         services.AddScoped<ITimeService, TimeService>();
         services.AddScoped<IInscricaoService, InscricaoService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IAssinaturaService, AssinaturaService>();
+        services.AddScoped<IPagamentoService, PagamentoService>();
         services.AddScoped<IOpenAIService, OpenAIService>();
 
-        // FACEIT API
+        services.AddHttpClient("MercadoPago", client =>
+        {
+            client.BaseAddress = new Uri("https://api.mercadopago.com/");
+            client.Timeout = TimeSpan.FromSeconds(60);
+        });
+
+        var provider = config["LLM:Provider"] ?? "OpenAI";
+        var llmBaseUrl = provider.Equals("Groq", StringComparison.OrdinalIgnoreCase)
+            ? "https://api.groq.com/openai/v1"
+            : config["LLM:BaseUrl"] ?? "https://api.openai.com/v1";
+
+        services.AddHttpClient<ILLMChatService, OpenAiCompatibleChatService>(client =>
+        {
+            client.BaseAddress = new Uri(llmBaseUrl.TrimEnd('/') + "/");
+            client.Timeout = TimeSpan.FromSeconds(60);
+        });
+
         services.AddHttpClient<IFaceitService, FaceitService>(client =>
         {
             client.BaseAddress = new Uri("https://open.faceit.com/data/v4/");

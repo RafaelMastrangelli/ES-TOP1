@@ -1,53 +1,47 @@
-# 🤖 Configuração da API OpenAI
+# Configuração do provedor LLM (OpenAI / Groq)
 
-## Como Configurar sua Chave da API
+A busca inteligente usa a interface `ILLMChatService`, compatível com APIs no formato OpenAI Chat Completions.
 
-### 1. Obter a Chave da API
-1. Acesse: https://platform.openai.com/account/api-keys
-2. Faça login na sua conta OpenAI
-3. Clique em "Create new secret key"
-4. Copie a chave (começa com `sk-`)
+## OpenAI (padrão)
 
-### 2. Configurar nos User Secrets
-Execute o comando abaixo substituindo `SUA_CHAVE_AQUI` pela sua chave real:
-
-```bash
-dotnet user-secrets set "OpenAI:ApiKey" "sk-sua-chave-real-aqui"
+```json
+"LLM": {
+  "Provider": "OpenAI",
+  "ApiKey": "sk-sua-chave",
+  "BaseUrl": "https://api.openai.com/v1",
+  "Model": "gpt-3.5-turbo"
+}
 ```
 
-### 3. Verificar Configuração
+Ou via user secrets:
+
 ```bash
-dotnet user-secrets list
+dotnet user-secrets set "LLM:ApiKey" "sk-sua-chave-real-aqui"
 ```
 
-### 4. Executar a API
+## Groq (migração futura)
+
+Para trocar para Groq, altere apenas a configuração — **sem mudar código**:
+
+```json
+"LLM": {
+  "Provider": "Groq",
+  "GroqApiKey": "gsk_sua-chave",
+  "Model": "llama-3.1-8b-instant"
+}
+```
+
+Variável de ambiente alternativa: `GROQ_API_KEY`
+
+Modelos sugeridos na Groq:
+- `llama-3.1-8b-instant` — rápido e econômico
+- `llama-3.3-70b-versatile` — mais preciso
+
+## Verificar
+
 ```bash
+cd ESTop1/ESTop1
 dotnet run
 ```
 
-## ✅ Vantagens dos User Secrets
-
-- ✅ **Seguro**: Chaves não ficam no código
-- ✅ **Local**: Apenas no seu ambiente
-- ✅ **Fácil**: Comando simples para configurar
-- ✅ **Padrão**: Prática recomendada do .NET
-
-## 🔧 Comandos Úteis
-
-```bash
-# Listar todos os secrets
-dotnet user-secrets list
-
-# Remover um secret
-dotnet user-secrets remove "OpenAI:ApiKey"
-
-# Limpar todos os secrets
-dotnet user-secrets clear
-```
-
-## 🚀 Testando a Funcionalidade
-
-1. Execute a API: `dotnet run`
-2. Acesse: http://localhost:5059/swagger
-3. Teste o endpoint: `/api/integracoes/openai/buscar-jogadores`
-4. Use no frontend: Campo "Buscar com IA"
+Teste no frontend: página Jogadores → busca com IA.

@@ -11,9 +11,11 @@ builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
-        options.JsonSerializerOptions.PropertyNamingPolicy = null; // Manter nomes das propriedades como estão
-        options.JsonSerializerOptions.WriteIndented = false; // Desabilitar indentação para produção
+        options.JsonSerializerOptions.PropertyNamingPolicy = null;
+        options.JsonSerializerOptions.WriteIndented = false;
     });
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -42,7 +44,6 @@ if (string.IsNullOrWhiteSpace(jwtKey))
     if (builder.Environment.IsDevelopment())
     {
         jwtKey = "ESTop1_Dev_Key_Only_For_Local_Development";
-        Console.WriteLine("AVISO: Jwt:Key não configurada. Usando chave de desenvolvimento.");
     }
     else
     {
@@ -77,11 +78,12 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
     try
     {
         await db.Database.MigrateAsync();
-        AppDbContext.PopularBanco(db);
+        AppDbContext.PopularBanco(db, app.Environment.IsDevelopment());
 
         var jogadoresSemFoto = db.Jogadores
             .Where(j => string.IsNullOrEmpty(j.FotoUrl) || j.FotoUrl.Contains("placeholder"))
@@ -95,12 +97,12 @@ using (var scope = app.Services.CreateScope())
         if (jogadoresSemFoto.Count > 0)
         {
             await db.SaveChangesAsync();
-            Console.WriteLine($"Fotos atualizadas para {jogadoresSemFoto.Count} jogadores (usando imagem padrão)");
+            logger.LogInformation("Fotos atualizadas para {Count} jogadores", jogadoresSemFoto.Count);
         }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Erro ao inicializar banco: {ex.Message}");
+        logger.LogError(ex, "Erro ao inicializar banco de dados");
     }
 }
 
@@ -108,7 +110,11 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 }
+
+app.UseExceptionHandler();
+app.UseMiddleware<SecurityHeadersMiddleware>();
 
 // CORS
 app.UseCors("AllowFrontend");
@@ -122,3 +128,5 @@ app.UseMiddleware<AssinaturaMiddleware>();
 
 app.MapControllers();
 app.Run();
+
+public partial class Program { }

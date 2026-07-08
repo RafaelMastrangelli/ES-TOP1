@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { api } from '../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -13,7 +14,8 @@ import {
   Download,
   Calendar,
   Users,
-  Target
+  Target,
+  Loader2
 } from 'lucide-react';
 
 interface Plano {
@@ -43,38 +45,95 @@ interface DadosPagamento {
 export default function PagamentoSucesso() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [plano, setPlano] = useState<Plano | null>(null);
   const [dadosPagamento, setDadosPagamento] = useState<DadosPagamento | null>(null);
+  const [pagamentoId, setPagamentoId] = useState<string | null>(null);
   const [dataInicio, setDataInicio] = useState<Date>(new Date());
   const [dataFim, setDataFim] = useState<Date>(new Date());
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const calcularDatas = (tipoPlano: string) => {
+    const inicio = new Date();
+    const fim = new Date();
+
+    if (tipoPlano === 'Trimestral') {
+      fim.setMonth(fim.getMonth() + 3);
+    } else if (tipoPlano === 'Enterprise') {
+      fim.setMonth(fim.getMonth() + 12);
+    } else {
+      fim.setMonth(fim.getMonth() + 1);
+    }
+
+    setDataInicio(inicio);
+    setDataFim(fim);
+  };
+
+  const montarPlanoAPartirDoStatus = (tipo: string, valor: number): Plano => ({
+    id: tipo,
+    tipo,
+    nome: tipo,
+    descricao: `Plano ${tipo}`,
+    valorMensal: valor,
+    duracao: tipo === 'Trimestral' ? '3 meses' : tipo === 'Enterprise' ? '12 meses' : '1 mês',
+    limiteJogadores: tipo === 'Gratuito' ? 5 : tipo === 'Mensal' ? 50 : -1,
+    acessoEstatisticas: true,
+    acessoBuscaIA: tipo !== 'Gratuito',
+    acessoAPI: tipo === 'Trimestral' || tipo === 'Enterprise',
+    suportePrioritario: tipo === 'Trimestral' || tipo === 'Enterprise',
+  });
 
   useEffect(() => {
-    // Recuperar dados da navegação
-    const planoData = location.state?.plano;
-    const pagamentoData = location.state?.dadosPagamento;
-    
+    const planoData = location.state?.plano as Plano | undefined;
+    const pagamentoData = location.state?.dadosPagamento as DadosPagamento | undefined;
+    const pagamentoStateId = location.state?.pagamentoId as string | undefined;
+    const pagamentoQueryId = searchParams.get('pagamentoId');
+    const idPagamento = pagamentoStateId || pagamentoQueryId;
+
     if (planoData) {
       setPlano(planoData);
-      setDadosPagamento(pagamentoData);
-      
-      // Calcular datas da assinatura
-      const inicio = new Date();
-      const fim = new Date();
-      
-      if (planoData.tipo === 'Trimestral') {
-        fim.setMonth(fim.getMonth() + 3);
-      } else {
-        fim.setMonth(fim.getMonth() + 1);
-      }
-      
-      setDataInicio(inicio);
-      setDataFim(fim);
-    } else {
-      // Se não há dados, redirecionar para assinaturas
-      navigate('/assinaturas');
+      setDadosPagamento(pagamentoData || null);
+      setPagamentoId(idPagamento || null);
+      calcularDatas(planoData.tipo);
+      setCarregando(false);
+      return;
     }
-  }, [location.state, navigate]);
+
+    if (!idPagamento) {
+      navigate('/assinaturas');
+      return;
+    }
+
+    setPagamentoId(idPagamento);
+
+    const carregarStatus = async () => {
+      try {
+        const status = await api.pagamentos.obterStatus(idPagamento);
+
+        if (status.status !== 'Aprovado') {
+          const pending = searchParams.get('pending');
+          if (pending) {
+            setErro('Pagamento ainda pendente. Aguarde a confirmação ou tente novamente.');
+          } else {
+            setErro('Pagamento não confirmado. Verifique o status em Assinaturas.');
+          }
+          return;
+        }
+
+        const planoMontado = montarPlanoAPartirDoStatus(status.plano, status.valor);
+        setPlano(planoMontado);
+        calcularDatas(status.plano);
+      } catch {
+        setErro('Não foi possível verificar o pagamento.');
+      } finally {
+        setCarregando(false);
+      }
+    };
+
+    carregarStatus();
+  }, [location.state, navigate, searchParams]);
 
   const getPlanoIcon = (tipo: string) => {
     switch (tipo) {
@@ -103,7 +162,15 @@ export default function PagamentoSucesso() {
   };
 
   const gerarComprovante = () => {
-    if (!plano || !dadosPagamento) return;
+    if (!plano) return;
+
+    const metodoPagamento = dadosPagamento?.metodo
+      ? dadosPagamento.metodo === 'cartao'
+        ? 'Cartão de Crédito'
+        : dadosPagamento.metodo === 'pix'
+          ? 'PIX'
+          : 'Boleto Bancário'
+      : 'Mercado Pago';
 
     const comprovante = `
 COMPROVANTE DE ASSINATURA - ES-TOP1
@@ -111,8 +178,8 @@ COMPROVANTE DE ASSINATURA - ES-TOP1
 
 Data: ${formatarData(new Date())}
 Cliente: ${user?.nome || 'Usuário'}
-E-mail: ${dadosPagamento.email}
-
+E-mail: ${dadosPagamento?.email || user?.email || '-'}
+${pagamentoId ? `ID Pagamento: ${pagamentoId}\n` : ''}
 PLANO CONTRATADO:
 - Nome: ${plano.nome}
 - Descrição: ${plano.descricao}
@@ -121,8 +188,7 @@ PLANO CONTRATADO:
 - Período: ${formatarData(dataInicio)} a ${formatarData(dataFim)}
 
 MÉTODO DE PAGAMENTO:
-- ${dadosPagamento.metodo === 'cartao' ? 'Cartão de Crédito' : 
-    dadosPagamento.metodo === 'pix' ? 'PIX' : 'Boleto Bancário'}
+- ${metodoPagamento}
 
 RECURSOS INCLUSOS:
 - ${plano.limiteJogadores === -1 ? 'Jogadores ilimitados' : `${plano.limiteJogadores} jogadores`}
@@ -143,14 +209,25 @@ Obrigado por escolher a ES-TOP1!
     URL.revokeObjectURL(url);
   };
 
-  if (!plano) {
+  if (carregando) {
     return (
       <div className="min-h-screen bg-background">
         <main className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="text-muted-foreground">Carregando...</div>
-            </div>
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (erro || !plano) {
+    return (
+      <div className="min-h-screen bg-background">
+        <main className="container mx-auto px-4 py-8">
+          <div className="max-w-lg mx-auto text-center space-y-4">
+            <p className="text-muted-foreground">{erro || 'Não foi possível carregar os dados do pagamento.'}</p>
+            <Button onClick={() => navigate('/assinaturas')}>Voltar para Assinaturas</Button>
           </div>
         </main>
       </div>

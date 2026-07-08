@@ -1,14 +1,41 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Eye, EyeOff, Check } from 'lucide-react';
+import { Eye, EyeOff, Check, Users, Building2 } from 'lucide-react';
 import AuthForm from '@/components/AuthForm';
 import { useAuth } from '@/hooks/useAuth';
 import LoadingSpinner from '@/components/ui/loading-spinner';
+import { cn } from '@/lib/utils';
+
+type TipoCadastro = 'Jogador' | 'Organizacao';
+
+const tiposCadastro: Array<{
+  value: TipoCadastro;
+  label: string;
+  description: string;
+  icon: typeof Users;
+}> = [
+  {
+    value: 'Jogador',
+    label: 'Jogador',
+    description: 'Crie seu perfil e seja encontrado por times',
+    icon: Users,
+  },
+  {
+    value: 'Organizacao',
+    label: 'Time / Organização',
+    description: 'Gerencie seu time e busque talentos',
+    icon: Building2,
+  },
+];
 
 const Cadastro = () => {
+  const [searchParams] = useSearchParams();
+  const tipoInicial = searchParams.get('tipo') === 'organizacao' ? 'Organizacao' : 'Jogador';
+
+  const [tipo, setTipo] = useState<TipoCadastro>(tipoInicial);
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -54,10 +81,10 @@ const Cadastro = () => {
     
     setIsLoading(true);
     
-    const result = await register(formData.nome, formData.email, formData.password);
+    const result = await register(formData.nome, formData.email, formData.password, tipo);
     
     if (result.success) {
-      navigate('/');
+      navigate('/perfil');
     } else {
       setError(result.error || 'Erro ao criar conta');
     }
@@ -77,12 +104,18 @@ const Cadastro = () => {
     );
   }
 
+  const isOrganizacao = tipo === 'Organizacao';
+
   return (
     <div className="min-h-screen bg-background">
       
       <AuthForm 
         title="Criar conta"
-        description="Junte-se à maior plataforma de E-Sports do Brasil"
+        description={
+          isOrganizacao
+            ? 'Cadastre seu time e comece a buscar jogadores na plataforma'
+            : 'Crie sua conta de jogador na maior plataforma de E-Sports do Brasil'
+        }
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
@@ -90,13 +123,55 @@ const Cadastro = () => {
               {error}
             </div>
           )}
+
           <div className="space-y-2">
-            <Label htmlFor="nome">Nome completo</Label>
+            <Label>Tipo de conta</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {tiposCadastro.map((opcao) => {
+                const Icon = opcao.icon;
+                const selecionado = tipo === opcao.value;
+
+                return (
+                  <button
+                    key={opcao.value}
+                    type="button"
+                    onClick={() => setTipo(opcao.value)}
+                    className={cn(
+                      'rounded-lg border p-4 text-left transition-colors',
+                      selecionado
+                        ? 'border-primary bg-primary/5'
+                        : 'border-input hover:border-primary/50'
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={cn(
+                        'rounded-md p-2',
+                        selecionado ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+                      )}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{opcao.label}</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {opcao.description}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="nome">
+              {isOrganizacao ? 'Nome do time ou organização' : 'Nome completo'}
+            </Label>
             <Input
               id="nome"
               name="nome"
               type="text"
-              placeholder="Seu nome completo"
+              placeholder={isOrganizacao ? 'Ex: Bauru Stars' : 'Seu nome completo'}
               value={formData.nome}
               onChange={handleChange}
               required
@@ -227,12 +302,21 @@ const Cadastro = () => {
                 Criando conta...
               </>
             ) : (
-              'Criar conta'
+              isOrganizacao ? 'Criar conta do time' : 'Criar conta'
             )}
           </Button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center space-y-2">
+          <p className="text-sm text-muted-foreground">
+            É jogador sem conta?{' '}
+            <Link
+              to="/inscricao"
+              className="text-primary hover:text-primary/80 transition-colors font-medium"
+            >
+              Inscreva-se como aspirante
+            </Link>
+          </p>
           <p className="text-sm text-muted-foreground">
             Já tem uma conta?{' '}
             <Link 

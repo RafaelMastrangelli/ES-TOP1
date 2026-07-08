@@ -19,11 +19,82 @@ import {
   AuthMeResponse,
   AuthAssinatura,
   OpenAIBuscaJogadoresResponse,
-  OpenAISugerirFiltrosResponse
+  OpenAISugerirFiltrosResponse,
+  CheckoutPagamentoResult,
+  PagamentoStatusResult,
+  PlanoAssinatura
 } from '@/types';
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5059/api';
+  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5280/api';
+
+const AUTH_TOKEN_KEY = 'auth_token';
+const AUTH_REFRESH_TOKEN_KEY = 'auth_refresh_token';
+
+let refreshInFlight: Promise<boolean> | null = null;
+
+const persistAuthTokens = (data: { token?: string; refreshToken?: string }) => {
+  if (data.token) localStorage.setItem(AUTH_TOKEN_KEY, data.token);
+  if (data.refreshToken) localStorage.setItem(AUTH_REFRESH_TOKEN_KEY, data.refreshToken);
+};
+
+const clearAuthTokens = () => {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(AUTH_REFRESH_TOKEN_KEY);
+};
+
+const refreshAccessToken = async (): Promise<boolean> => {
+  if (refreshInFlight) return refreshInFlight;
+
+  const refreshToken = localStorage.getItem(AUTH_REFRESH_TOKEN_KEY);
+  if (!refreshToken) return false;
+
+  refreshInFlight = (async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!response.ok) {
+        clearAuthTokens();
+        return false;
+      }
+
+      const data = keysToCamelCase<AuthResponse>(await response.json());
+      persistAuthTokens(data);
+      return Boolean(data.token);
+    } catch {
+      clearAuthTokens();
+      return false;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+};
+
+const toCamelCase = (key: string): string =>
+  key.charAt(0).toLowerCase() + key.slice(1);
+
+const keysToCamelCase = <T>(input: unknown): T => {
+  if (Array.isArray(input)) {
+    return input.map((item) => keysToCamelCase(item)) as T;
+  }
+
+  if (input !== null && typeof input === 'object') {
+    return Object.fromEntries(
+      Object.entries(input as Record<string, unknown>).map(([key, value]) => [
+        toCamelCase(key),
+        keysToCamelCase(value),
+      ])
+    ) as T;
+  }
+
+  return input as T;
+};
 
 const parseErrorData = async (response: Response): Promise<ApiErrorResponse> => {
   try {
@@ -48,53 +119,72 @@ const throwApiError = async (response: Response): Promise<never> => {
 
 // Helper para fazer requisições HTTP
 const request = async <T>(
-  url: string, 
-  options: RequestInit = {}
+  url: string,
+  options: RequestInit = {},
+  retryOnUnauthorized = true
 ): Promise<T> => {
-  const token = localStorage.getItem('auth_token');
-  
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     },
     ...options,
   });
 
+  if (response.status === 401 && retryOnUnauthorized && !url.endsWith('/auth/refresh')) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      return request<T>(url, options, false);
+    }
+  }
+
   if (!response.ok) {
     await throwApiError(response);
   }
 
-  return response.json() as Promise<T>;
+  const data = await response.json();
+  return keysToCamelCase<T>(data);
+};
+
+const fetchWithAuth = async (url: string, options: RequestInit = {}, retryOnUnauthorized = true) => {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...options.headers,
+    },
+  });
+
+  if (response.status === 401 && retryOnUnauthorized && !url.endsWith('/auth/refresh')) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      return fetchWithAuth(url, options, false);
+    }
+  }
+
+  return response;
 };
 
 export const api = {
   // Métodos HTTP básicos para usar com axios
   get: async <T = unknown>(url: string) => {
-    const token = localStorage.getItem('auth_token');
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-      },
-    });
+    const response = await fetchWithAuth(`${API_BASE_URL}${url}`);
     
     if (!response.ok) {
       await throwApiError(response);
     }
     
-    return { data: await response.json() as T };
+    return { data: keysToCamelCase<T>(await response.json()) };
   },
 
   post: async <T = unknown>(url: string, data?: unknown) => {
-    const token = localStorage.getItem('auth_token');
-    const response = await fetch(`${API_BASE_URL}${url}`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}${url}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-      },
       body: data ? JSON.stringify(data) : undefined,
     });
     
@@ -102,7 +192,7 @@ export const api = {
       await throwApiError(response);
     }
     
-    return { data: await response.json() as T };
+    return { data: keysToCamelCase<T>(await response.json()) };
   },
 
   auth: {
@@ -122,6 +212,44 @@ export const api = {
 
     me: async () => {
       return request<AuthMeResponse>(`${API_BASE_URL}/auth/me`);
+    },
+
+    logout: async () => {
+      const refreshToken = localStorage.getItem(AUTH_REFRESH_TOKEN_KEY);
+      if (refreshToken) {
+        try {
+          await request(`${API_BASE_URL}/auth/logout`, {
+            method: 'POST',
+            body: JSON.stringify({ refreshToken }),
+          }, false);
+        } catch {
+          // Ignora falha de logout remoto e limpa sessão local
+        }
+      }
+      clearAuthTokens();
+    },
+  },
+
+  pagamentos: {
+    checkout: async (plano: string, metodo: string = 'checkout') => {
+      return request<CheckoutPagamentoResult>(`${API_BASE_URL}/pagamentos/checkout`, {
+        method: 'POST',
+        body: JSON.stringify({ plano, metodo }),
+      });
+    },
+
+    obterStatus: async (pagamentoId: string) => {
+      return request<PagamentoStatusResult>(`${API_BASE_URL}/pagamentos/${pagamentoId}/status`);
+    },
+
+    historico: async () => {
+      return request<PagamentoStatusResult[]>(`${API_BASE_URL}/pagamentos/historico`);
+    },
+
+    simularAprovacao: async (pagamentoId: string) => {
+      return request<CheckoutPagamentoResult>(`${API_BASE_URL}/pagamentos/${pagamentoId}/simular-aprovacao`, {
+        method: 'POST',
+      }, false);
     },
   },
 
@@ -200,7 +328,7 @@ export const api = {
     },
 
     criarPerfil: async (): Promise<Jogador> => {
-      return request<Jogador>(`${API_BASE_URL}/jogadores/debug/criar-para-usuario`, {
+      return request<Jogador>(`${API_BASE_URL}/jogadores/meu-perfil`, {
         method: 'POST',
       });
     },
@@ -308,12 +436,6 @@ export const api = {
     buscarJogadores: async (consulta: string): Promise<OpenAIBuscaJogadoresResponse> => {
       return request<OpenAIBuscaJogadoresResponse>(
         `${API_BASE_URL}/integracoes/openai/buscar-jogadores?consulta=${encodeURIComponent(consulta)}`
-      );
-    },
-
-    buscarJogadoresTeste: async (consulta: string): Promise<OpenAIBuscaJogadoresResponse> => {
-      return request<OpenAIBuscaJogadoresResponse>(
-        `${API_BASE_URL}/integracoes/openai/teste/buscar-jogadores?consulta=${encodeURIComponent(consulta)}`
       );
     },
 

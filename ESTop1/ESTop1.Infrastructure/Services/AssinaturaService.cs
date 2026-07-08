@@ -21,33 +21,22 @@ public class AssinaturaService : IAssinaturaService
 
     public async Task<Assinatura> CriarAssinaturaAsync(Guid usuarioId, PlanoAssinatura plano)
     {
-        var assinaturasAtivas = await _assinaturaRepository.ListarAtivasPorUsuarioAsync(usuarioId);
-        foreach (var assinatura in assinaturasAtivas)
+        if (plano != PlanoAssinatura.Gratuito)
         {
-            assinatura.Status = StatusAssinatura.Cancelada;
-            assinatura.DataCancelamento = DateTime.UtcNow;
-            await _assinaturaRepository.AtualizarAsync(assinatura);
+            throw new InvalidOperationException("Planos pagos devem ser ativados somente após confirmação de pagamento.");
         }
 
-        var planoDetalhes = await _planoRepository.ObterAtivoPorTipoAsync(plano);
-        if (planoDetalhes is null)
+        return await AtivarAssinaturaInternaAsync(usuarioId, plano, Guid.NewGuid().ToString());
+    }
+
+    public Task<Assinatura> AtivarAssinaturaPorPagamentoAsync(Guid usuarioId, PlanoAssinatura plano, string idTransacao)
+    {
+        if (plano == PlanoAssinatura.Gratuito)
         {
-            throw new ArgumentException("Plano não encontrado ou inativo");
+            throw new ArgumentException("Use CriarAssinaturaAsync para o plano gratuito.");
         }
 
-        var novaAssinatura = new Assinatura
-        {
-            Id = Guid.NewGuid(),
-            UsuarioId = usuarioId,
-            Plano = plano,
-            Status = StatusAssinatura.Ativa,
-            DataInicio = DateTime.UtcNow,
-            DataFim = DateTime.UtcNow.AddMonths(1),
-            ValorMensal = planoDetalhes.ValorMensal,
-            IdTransacao = Guid.NewGuid().ToString()
-        };
-
-        return await _assinaturaRepository.CriarAsync(novaAssinatura);
+        return AtivarAssinaturaInternaAsync(usuarioId, plano, idTransacao);
     }
 
     public Task<Assinatura?> ObterAssinaturaAtivaAsync(Guid usuarioId)
@@ -90,7 +79,7 @@ public class AssinaturaService : IAssinaturaService
         var assinatura = await _assinaturaRepository.ObterPorIdAsync(assinaturaId);
         if (assinatura is null) return;
 
-        assinatura.DataFim = assinatura.DataFim.AddMonths(1);
+        assinatura.DataFim = assinatura.DataFim.AddMonths(ObterDuracaoMeses(assinatura.Plano));
         assinatura.Status = StatusAssinatura.Ativa;
         await _assinaturaRepository.AtualizarAsync(assinatura);
     }
@@ -108,6 +97,50 @@ public class AssinaturaService : IAssinaturaService
             throw new ArgumentException("Usuário não encontrado com o email fornecido");
         }
 
-        return await CriarAssinaturaAsync(usuario.Id, plano);
+        if (plano == PlanoAssinatura.Gratuito)
+        {
+            return await CriarAssinaturaAsync(usuario.Id, plano);
+        }
+
+        return await AtivarAssinaturaPorPagamentoAsync(usuario.Id, plano, $"admin-{Guid.NewGuid()}");
     }
+
+    private async Task<Assinatura> AtivarAssinaturaInternaAsync(Guid usuarioId, PlanoAssinatura plano, string idTransacao)
+    {
+        var assinaturasAtivas = await _assinaturaRepository.ListarAtivasPorUsuarioAsync(usuarioId);
+        foreach (var assinatura in assinaturasAtivas)
+        {
+            assinatura.Status = StatusAssinatura.Cancelada;
+            assinatura.DataCancelamento = DateTime.UtcNow;
+            await _assinaturaRepository.AtualizarAsync(assinatura);
+        }
+
+        var planoDetalhes = await _planoRepository.ObterAtivoPorTipoAsync(plano);
+        if (planoDetalhes is null)
+        {
+            throw new ArgumentException("Plano não encontrado ou inativo");
+        }
+
+        var duracaoMeses = ObterDuracaoMeses(plano);
+        var novaAssinatura = new Assinatura
+        {
+            Id = Guid.NewGuid(),
+            UsuarioId = usuarioId,
+            Plano = plano,
+            Status = StatusAssinatura.Ativa,
+            DataInicio = DateTime.UtcNow,
+            DataFim = DateTime.UtcNow.AddMonths(duracaoMeses),
+            ValorMensal = planoDetalhes.ValorMensal,
+            IdTransacao = idTransacao
+        };
+
+        return await _assinaturaRepository.CriarAsync(novaAssinatura);
+    }
+
+    private static int ObterDuracaoMeses(PlanoAssinatura plano) => plano switch
+    {
+        PlanoAssinatura.Trimestral => 3,
+        PlanoAssinatura.Enterprise => 12,
+        _ => 1
+    };
 }

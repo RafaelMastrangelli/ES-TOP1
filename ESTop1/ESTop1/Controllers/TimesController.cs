@@ -99,7 +99,11 @@ public class TimesController : ControllerBase
     {
         try
         {
-            var resultado = await _timeService.CriarTimeAsync(new CriarTimeCommand
+            var userId = User.FindFirst("user_id")?.Value;
+            if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userIdGuid))
+                return Unauthorized();
+
+            var resultado = await _timeService.CriarTimeAsync(userIdGuid, new CriarTimeCommand
             {
                 Nome = request.Nome,
                 Pais = request.Pais

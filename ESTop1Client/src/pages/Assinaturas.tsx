@@ -5,7 +5,8 @@ import { api } from '../lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Loader2, Check, X, Crown, Star, Zap, Target, Users } from 'lucide-react';
+import { Loader2, Check, X, Crown, Star, Zap, Target, Users, History } from 'lucide-react';
+import { PlanoAssinatura, PagamentoStatusResult } from '../types';
 
 interface Plano {
   id: string;
@@ -36,6 +37,7 @@ export default function Assinaturas() {
   const { user, assinatura } = useAuth();
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [minhaAssinatura, setMinhaAssinatura] = useState<Assinatura | null>(null);
+  const [historico, setHistorico] = useState<PagamentoStatusResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -45,54 +47,30 @@ export default function Assinaturas() {
 
   const carregarDados = async () => {
     try {
-      // Planos fixos conforme especificado
-      const planosFixos: Plano[] = [
-        {
-          id: '1',
-          tipo: 'Gratuito',
-          nome: 'Gratuito',
-          descricao: 'Perfeito para começar e testar a plataforma',
-          valorMensal: 0,
-          duracao: '1 mês',
-          limiteJogadores: 5,
-          acessoEstatisticas: true,
-          acessoBuscaIA: false,
-          acessoAPI: false,
-          suportePrioritario: false,
-        },
-        {
-          id: '2',
-          tipo: 'Mensal',
-          nome: 'Mensal',
-          descricao: 'Ideal para uso regular e descoberta de talentos',
-          valorMensal: 100,
-          duracao: '1 mês',
-          limiteJogadores: 50,
-          acessoEstatisticas: true,
-          acessoBuscaIA: true,
-          acessoAPI: false,
-          suportePrioritario: false,
-          popular: true,
-        },
-        {
-          id: '3',
-          tipo: 'Trimestral',
-          nome: 'Trimestral',
-          descricao: 'Melhor custo-benefício para times profissionais',
-          valorMensal: 230,
-          duracao: '3 meses',
-          limiteJogadores: -1, // Ilimitado
-          acessoEstatisticas: true,
-          acessoBuscaIA: true,
-          acessoAPI: true,
-          suportePrioritario: true,
-        }
-      ];
+      const [planosApi, assinaturaData, historicoData] = await Promise.all([
+        api.assinaturas.obterPlanos().catch(() => []),
+        api.assinaturas.obterMinha().catch(() => null),
+        api.pagamentos.historico().catch(() => []),
+      ]);
 
-      const assinaturaData = await api.assinaturas.obterMinha().catch(() => null);
-      
-      setPlanos(planosFixos);
+      const planosMapeados: Plano[] = (planosApi as PlanoAssinatura[]).map((p) => ({
+        id: p.id,
+        tipo: p.tipo,
+        nome: p.nome,
+        descricao: p.descricao,
+        valorMensal: p.valorMensal,
+        duracao: p.tipo === 'Trimestral' ? '3 meses' : '1 mês',
+        limiteJogadores: p.limiteJogadores,
+        acessoEstatisticas: p.acessoEstatisticas,
+        acessoBuscaIA: p.acessoBuscaIA,
+        acessoAPI: p.acessoAPI,
+        suportePrioritario: p.suportePrioritario,
+        popular: p.tipo === 'Mensal',
+      }));
+
+      setPlanos(planosMapeados);
       setMinhaAssinatura(assinaturaData);
+      setHistorico(historicoData);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -156,6 +134,19 @@ export default function Assinaturas() {
       case 'Mensal': return 'bg-gradient-secondary';
       case 'Trimestral': return 'bg-gradient-primary';
       default: return '';
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'Aprovado':
+        return <Badge className="bg-success/20 text-success">Aprovado</Badge>;
+      case 'Pendente':
+        return <Badge variant="secondary">Pendente</Badge>;
+      case 'Recusado':
+        return <Badge variant="destructive">Recusado</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
@@ -364,6 +355,43 @@ export default function Assinaturas() {
             );
           })}
         </div>
+
+        {historico.length > 0 && (
+          <Card className="mt-12 animate-fade-in">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="h-5 w-5" />
+                Histórico de Pagamentos
+              </CardTitle>
+              <CardDescription>Últimas transações da sua conta</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {historico.map((item) => (
+                  <div
+                    key={item.pagamentoId}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border"
+                  >
+                    <div>
+                      <p className="font-medium">{item.plano}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {item.metodoPagamento} · R$ {item.valor.toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {getStatusBadge(item.status)}
+                      {item.pagoEm && (
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(item.pagoEm).toLocaleDateString('pt-BR')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         </div>
       </main>

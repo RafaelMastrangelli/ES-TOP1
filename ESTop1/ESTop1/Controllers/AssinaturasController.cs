@@ -1,3 +1,4 @@
+using ESTop1.Api.Attributes;
 using ESTop1.Api.DTOs;
 using ESTop1.Domain;
 using ESTop1.Domain.Interfaces;
@@ -148,7 +149,7 @@ public class AssinaturasController : ControllerBase
     /// Atualiza assinatura de usuário por email (endpoint administrativo)
     /// </summary>
     [HttpPost("admin/atualizar-por-email")]
-    [AllowAnonymous]
+    [AuthorizeAdmin]
     public async Task<IActionResult> AtualizarAssinaturaPorEmail([FromBody] AtualizarAssinaturaPorEmailRequest request)
     {
         try

@@ -120,16 +120,21 @@ const Index = () => {
             Pronto para começar?
           </h2>
           <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-            Cadastre-se agora e tenha acesso completo à maior plataforma de vendas de jogadores profissionais de CS2.
+            Crie sua conta como jogador ou time e acesse a maior plataforma de talentos de CS2.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" variant="secondary" asChild>
               <Link to="/cadastro">
-                Criar Conta Gratuita
+                Criar Conta
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
+              <Link to="/cadastro?tipo=organizacao">
+                Cadastrar Time
+              </Link>
+            </Button>
+            <Button size="lg" variant="ghost" asChild className="text-white hover:text-white hover:bg-white/10">
               <Link to="/inscricao">
                 Inscrever-se como Aspirante
               </Link>

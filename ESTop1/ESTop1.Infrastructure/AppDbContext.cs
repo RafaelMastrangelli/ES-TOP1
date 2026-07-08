@@ -1,7 +1,5 @@
 ﻿using ESTop1.Domain;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Numerics;
 
 namespace ESTop1.Infrastructure;
 
@@ -13,6 +11,8 @@ public class AppDbContext : DbContext
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Assinatura> Assinaturas => Set<Assinatura>();
     public DbSet<Plano> Planos => Set<Plano>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<Pagamento> Pagamentos => Set<Pagamento>();
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
@@ -57,10 +57,27 @@ public class AppDbContext : DbContext
             e.HasIndex(x => x.Tipo).IsUnique();
             e.Property(x => x.ValorMensal).HasPrecision(10, 2);
         });
+
+        b.Entity<RefreshToken>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.TokenHash).IsUnique();
+            e.HasIndex(x => new { x.UsuarioId, x.RevokedAt });
+            e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId);
+        });
+
+        b.Entity<Pagamento>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.IdExterno);
+            e.HasIndex(x => new { x.UsuarioId, x.Status });
+            e.Property(x => x.Valor).HasPrecision(10, 2);
+            e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId);
+        });
     }
 
     // Dados iniciais (seed)
-    public static void PopularBanco(AppDbContext db)
+    public static void PopularBanco(AppDbContext db, bool incluirDadosDev = false)
     {
         if (db.Jogadores.Any()) return;
 
@@ -134,62 +151,62 @@ public class AppDbContext : DbContext
             Ativo = true
         };
 
-        // Criar usuário de teste
-        var usuarioTeste = new Usuario
-        {
-            Id = Guid.NewGuid(),
-            Nome = "Usuário Teste",
-            Email = "teste23@email",
-            SenhaHash = BCrypt.Net.BCrypt.HashPassword("123456"),
-            Tipo = TipoUsuario.Jogador,
-            Ativo = true
-        };
-
         db.Usuarios.Add(admin);
-        db.Usuarios.Add(usuarioTeste);
 
-        // Criar assinatura gratuita para o usuário de teste
-        var assinaturaTeste = new Assinatura
+        if (incluirDadosDev)
         {
-            Id = Guid.NewGuid(),
-            UsuarioId = usuarioTeste.Id,
-            Plano = PlanoAssinatura.Gratuito,
-            Status = StatusAssinatura.Ativa,
-            DataInicio = DateTime.UtcNow,
-            DataFim = DateTime.UtcNow.AddYears(1),
-            ValorMensal = 0
-        };
+            var usuarioTeste = new Usuario
+            {
+                Id = Guid.NewGuid(),
+                Nome = "Usuário Teste",
+                Email = "teste23@email",
+                SenhaHash = BCrypt.Net.BCrypt.HashPassword("123456"),
+                Tipo = TipoUsuario.Jogador,
+                Ativo = true
+            };
 
-        db.Assinaturas.Add(assinaturaTeste);
+            db.Usuarios.Add(usuarioTeste);
 
-        // Criar jogador para o usuário de teste
-        var jogadorTeste = new Jogador
-        {
-            Id = usuarioTeste.Id, // Usar o mesmo ID do usuário
-            Apelido = "TestePlayer",
-            Pais = "BR",
-            Idade = 20,
-            FuncaoPrincipal = Funcao.Entry,
-            Status = StatusJogador.Amador,
-            Disponibilidade = Disponibilidade.Livre,
-            ValorDeMercado = 10000,
-            Visivel = true
-        };
+            var assinaturaTeste = new Assinatura
+            {
+                Id = Guid.NewGuid(),
+                UsuarioId = usuarioTeste.Id,
+                Plano = PlanoAssinatura.Gratuito,
+                Status = StatusAssinatura.Ativa,
+                DataInicio = DateTime.UtcNow,
+                DataFim = DateTime.UtcNow.AddYears(1),
+                ValorMensal = 0
+            };
 
-        db.Jogadores.Add(jogadorTeste);
+            db.Assinaturas.Add(assinaturaTeste);
 
-        // Criar estatísticas para o jogador de teste
-        var estatisticaTeste = new Estatistica
-        {
-            Id = Guid.NewGuid(),
-            JogadorId = jogadorTeste.Id,
-            Periodo = "Geral",
-            Rating = 1.0m,
-            KD = 1.0m,
-            PartidasJogadas = 100
-        };
+            var jogadorTeste = new Jogador
+            {
+                Id = usuarioTeste.Id,
+                Apelido = "TestePlayer",
+                Pais = "BR",
+                Idade = 20,
+                FuncaoPrincipal = Funcao.Entry,
+                Status = StatusJogador.Amador,
+                Disponibilidade = Disponibilidade.Livre,
+                ValorDeMercado = 10000,
+                Visivel = true
+            };
 
-        db.Estatisticas.Add(estatisticaTeste);
+            db.Jogadores.Add(jogadorTeste);
+
+            var estatisticaTeste = new Estatistica
+            {
+                Id = Guid.NewGuid(),
+                JogadorId = jogadorTeste.Id,
+                Periodo = "Geral",
+                Rating = 1.0m,
+                KD = 1.0m,
+                PartidasJogadas = 100
+            };
+
+            db.Estatisticas.Add(estatisticaTeste);
+        }
 
         // Criar time
         var time = new Time { Id = Guid.NewGuid(), Nome = "Bauru Stars", Pais = "BR" };

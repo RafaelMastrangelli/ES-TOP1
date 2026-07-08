@@ -2,14 +2,6 @@ import { Link } from 'react-router-dom';
 import { Target, Users, Trophy, Crown, LogOut, User } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../hooks/useAuth';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from './ui/dropdown-menu';
 
 interface NavbarProps {
   showNavigation?: boolean;
@@ -19,8 +11,8 @@ interface NavbarProps {
 const Navbar = ({ showNavigation = true, embedded = false }: NavbarProps) => {
   const { isAuthenticated, user, logout } = useAuth();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
   };
 
   // Função para verificar se o usuário tem acesso a uma funcionalidade
@@ -82,38 +74,17 @@ const Navbar = ({ showNavigation = true, embedded = false }: NavbarProps) => {
               </span>
             </div>
 
-            {/* User Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="relative h-8 w-8 rounded-full">
-                  <User className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user?.nome}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user?.email}
-                    </p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      Tipo: {user?.tipo}
-                    </p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/perfil" className="flex items-center">
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Meu Perfil</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sair</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/perfil" className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                <span className="hidden sm:inline">Perfil</span>
+              </Link>
+            </Button>
+
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="flex items-center gap-2">
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Sair</span>
+            </Button>
           </div>
         ) : (
           <div className="flex items-center space-x-2">

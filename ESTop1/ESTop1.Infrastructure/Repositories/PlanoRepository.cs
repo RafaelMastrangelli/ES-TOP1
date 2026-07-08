@@ -27,9 +27,10 @@ public class PlanoRepository : IPlanoRepository
 
     public async Task<List<Plano>> ListarAtivosAsync(CancellationToken cancellationToken = default)
     {
-        return await _context.Planos
+        var planos = await _context.Planos
             .Where(p => p.Ativo)
-            .OrderBy(p => p.ValorMensal)
             .ToListAsync(cancellationToken);
+
+        return planos.OrderBy(p => p.ValorMensal).ToList();
     }
 }

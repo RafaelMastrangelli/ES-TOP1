@@ -16,6 +16,13 @@ interface LocationState {
   };
 }
 
+const storeSession = (data: AuthResponse) => {
+  localStorage.setItem('auth_token', data.token);
+  if (data.refreshToken) {
+    localStorage.setItem('auth_refresh_token', data.refreshToken);
+  }
+};
+
 export const useAuth = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -42,6 +49,7 @@ export const useAuth = () => {
             });
           } else {
             localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_refresh_token');
             setAuthState({
               user: null,
               assinatura: null,
@@ -57,9 +65,9 @@ export const useAuth = () => {
             isLoading: false
           });
         }
-      } catch (error) {
-        console.log('Erro ao verificar autenticação:', error);
+      } catch {
         localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_refresh_token');
         setAuthState({
           user: null,
           assinatura: null,
@@ -76,12 +84,12 @@ export const useAuth = () => {
     try {
       const response = await api.post<AuthResponse>('/auth/login', { email, senha: password });
 
-      if (response.data?.Token) {
-        localStorage.setItem('auth_token', response.data.Token);
+      if (response.data?.token) {
+        storeSession(response.data);
 
         setAuthState({
-          user: response.data.Usuario,
-          assinatura: response.data.Assinatura,
+          user: response.data.usuario,
+          assinatura: response.data.assinatura,
           isAuthenticated: true,
           isLoading: false
         });
@@ -107,17 +115,15 @@ export const useAuth = () => {
         tipo
       });
 
-      if (response.data?.Token) {
-        localStorage.setItem('auth_token', response.data.Token);
+      if (response.data?.token) {
+        storeSession(response.data);
 
         setAuthState({
-          user: response.data.Usuario,
-          assinatura: response.data.Assinatura,
+          user: response.data.usuario,
+          assinatura: response.data.assinatura,
           isAuthenticated: true,
           isLoading: false
         });
-
-        navigate('/', { replace: true });
 
         return { success: true as const };
       }
@@ -128,8 +134,8 @@ export const useAuth = () => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('auth_token');
+  const logout = async () => {
+    await api.auth.logout();
     setAuthState({
       user: null,
       assinatura: null,

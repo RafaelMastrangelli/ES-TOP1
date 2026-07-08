@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ESTop1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore
+        run: |
+          dotnet restore ESTop1.Domain.Tests/ESTop1.Domain.Tests.csproj
+          dotnet restore ESTop1.Infrastructure.Tests/ESTop1.Infrastructure.Tests.csproj
+          dotnet restore ESTop1.Api.Tests/ESTop1.Api.Tests.csproj
+          dotnet restore ESTop1/ESTop1.Api.csproj
+
+      - name: Build
+        run: |
+          dotnet build ESTop1/ESTop1.Api.csproj --no-restore
+          dotnet build ESTop1.Domain.Tests/ESTop1.Domain.Tests.csproj --no-restore
+          dotnet build ESTop1.Infrastructure.Tests/ESTop1.Infrastructure.Tests.csproj --no-restore
+          dotnet build ESTop1.Api.Tests/ESTop1.Api.Tests.csproj --no-restore
+
+      - name: Test
+        run: |
+          dotnet test ESTop1.Domain.Tests/ESTop1.Domain.Tests.csproj --no-build --verbosity normal
+          dotnet test ESTop1.Infrastructure.Tests/ESTop1.Infrastructure.Tests.csproj --no-build --verbosity normal
+          dotnet test ESTop1.Api.Tests/ESTop1.Api.Tests.csproj --no-build --verbosity normal
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ESTop1Client
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ESTop1Client/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build

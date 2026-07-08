@@ -3,6 +3,8 @@ namespace ESTop1.Api.DTOs;
 public class LoginResponse
 {
     public string Token { get; set; } = null!;
+    public string RefreshToken { get; set; } = null!;
+    public DateTime ExpiresAt { get; set; }
     public UsuarioResponse Usuario { get; set; } = null!;
     public AssinaturaResponse? Assinatura { get; set; }
 }

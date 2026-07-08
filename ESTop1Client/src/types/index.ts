@@ -18,6 +18,7 @@ export interface Time {
   tier?: number;
   contratando?: boolean;
   logoUrl?: string;
+  quantidadeJogadores?: number;
   jogadores?: Jogador[];
 }
 
@@ -223,14 +224,53 @@ export interface AuthAssinatura {
 }
 
 export interface AuthResponse {
-  Token: string;
-  Usuario: AuthUser;
-  Assinatura: AuthAssinatura | null;
+  token: string;
+  refreshToken: string;
+  expiresAt: string;
+  usuario: AuthUser;
+  assinatura: AuthAssinatura | null;
 }
 
 export interface AuthMeResponse {
   usuario: AuthUser;
   assinatura: AuthAssinatura | null;
+}
+
+export interface CheckoutPagamentoResult {
+  pagamentoId: string;
+  status: string;
+  plano: string;
+  valor: number;
+  metodoPagamento: string;
+  checkoutUrl?: string;
+  pixQrCode?: string;
+  pixQrCodeBase64?: string;
+  expiraEm: string;
+  aprovadoImediatamente: boolean;
+  assinaturaId?: string;
+}
+
+export interface PagamentoStatusResult {
+  pagamentoId: string;
+  status: string;
+  plano: string;
+  valor: number;
+  metodoPagamento: string;
+  pagoEm?: string;
+  assinaturaId?: string;
+}
+
+export interface PlanoAssinatura {
+  id: string;
+  tipo: string;
+  nome: string;
+  descricao: string;
+  valorMensal: number;
+  limiteJogadores: number;
+  acessoEstatisticas: boolean;
+  acessoBuscaIA: boolean;
+  acessoAPI: boolean;
+  suportePrioritario: boolean;
 }
 
 export interface OpenAIJogadorResult {

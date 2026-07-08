@@ -1,12 +1,105 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
-import { Time, Jogador, getApiErrorMessage } from '../types';
+import { Time, Jogador, getApiErrorMessage, ApiRequestError } from '../types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { Loader2, Building2, Edit, UserPlus, Search, BarChart3, CheckCircle, AlertCircle, Users, Trophy, Target, TrendingUp, Calendar, MapPin, DollarSign, Award, Clock, Star, Activity, Zap, Shield, Globe } from 'lucide-react';
 import EditarPerfilTime from '../components/EditarPerfilTime';
+
+interface CriarTimeOrganizacaoProps {
+  nomeSugerido?: string;
+  onTimeCriado: (time: Time) => void;
+}
+
+const CriarTimeOrganizacao: React.FC<CriarTimeOrganizacaoProps> = ({
+  nomeSugerido = '',
+  onTimeCriado,
+}) => {
+  const [nome, setNome] = useState(nomeSugerido);
+  const [pais, setPais] = useState('BR');
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErro(null);
+    setSalvando(true);
+
+    try {
+      const timeCriado = await api.times.criar({ nome: nome.trim(), pais });
+      onTimeCriado(timeCriado);
+    } catch (error: unknown) {
+      setErro(getApiErrorMessage(error, 'Erro ao criar time'));
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <Card className="w-full max-w-md animate-fade-in">
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <div className="p-4 rounded-full bg-muted">
+              <Building2 className="h-12 w-12 text-muted-foreground" />
+            </div>
+          </div>
+          <CardTitle className="text-2xl">Criar seu time</CardTitle>
+          <CardDescription>
+            Complete o cadastro da sua organização para começar a gerenciar jogadores.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {erro && (
+              <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
+                {erro}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="nome-time">Nome do time</Label>
+              <Input
+                id="nome-time"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                placeholder="Ex: Bauru Stars"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="pais-time">País</Label>
+              <Input
+                id="pais-time"
+                value={pais}
+                onChange={(e) => setPais(e.target.value.toUpperCase())}
+                placeholder="BR"
+                maxLength={2}
+                required
+              />
+            </div>
+
+            <Button type="submit" className="w-full" disabled={salvando || !nome.trim()}>
+              {salvando ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Criando time...
+                </>
+              ) : (
+                'Criar time'
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
 const PerfilOrganizacao: React.FC = () => {
   const { user, assinatura } = useAuth();
@@ -29,7 +122,11 @@ const PerfilOrganizacao: React.FC = () => {
           setJogadores(time.jogadores || []);
         }
       } catch (err: unknown) {
-        setError(getApiErrorMessage(err, 'Erro ao carregar perfil'));
+        if (err instanceof ApiRequestError && err.response?.status === 404) {
+          setTime(null);
+        } else {
+          setError(getApiErrorMessage(err, 'Erro ao carregar perfil'));
+        }
       } finally {
         setLoading(false);
       }
@@ -79,30 +176,13 @@ const PerfilOrganizacao: React.FC = () => {
 
   if (!time) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="w-full max-w-md animate-fade-in">
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
-              <div className="p-4 rounded-full bg-muted">
-                <Building2 className="h-12 w-12 text-muted-foreground" />
-              </div>
-            </div>
-            <CardTitle className="text-2xl">Time não encontrado</CardTitle>
-            <CardDescription>
-              Parece que você ainda não tem um time criado. 
-              Crie seu time para começar a gerenciar jogadores.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button 
-              onClick={() => window.location.href = '/times'}
-              className="w-full"
-            >
-              Criar Time
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <CriarTimeOrganizacao
+        nomeSugerido={user?.nome}
+        onTimeCriado={(timeCriado) => {
+          setTime(timeCriado);
+          setJogadores(timeCriado.jogadores || []);
+        }}
+      />
     );
   }
 

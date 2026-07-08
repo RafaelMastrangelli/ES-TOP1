@@ -22,7 +22,7 @@ const TimeCard = ({ time }: TimeCardProps) => {
           <div className="flex items-center gap-2 text-muted-foreground">
             <Users className="h-5 w-5" />
             <span className="font-mono font-medium">
-              {time.jogadores?.length || 0}
+              {time.jogadores?.length ?? time.quantidadeJogadores ?? 0}
             </span>
           </div>
         </div>

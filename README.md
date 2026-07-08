@@ -43,7 +43,7 @@ cd ESTop1/ESTop1
 dotnet restore
 dotnet run
 ```
-**URL**: `https://localhost:7193`
+**URL**: `http://localhost:5280` (API em `/api`)
 
 ### Frontend
 ```bash
@@ -77,7 +77,7 @@ CONNECTION_STRING="Data Source=estop1.db"
 #### Frontend
 ```bash
 # API Base URL
-VITE_API_BASE_URL="https://localhost:7193"  # Desenvolvimento
+VITE_API_BASE_URL="http://localhost:5280/api"  # Desenvolvimento
 # VITE_API_BASE_URL="https://api.estop1.com"  # Produção
 ```
 
@@ -224,22 +224,12 @@ A nova funcionalidade permite buscar jogadores usando linguagem natural:
 
 ### Layouts Diferenciados
 - **PublicLayout**: Para páginas públicas (header simples)
-- **ProtectedLayout**: Para páginas protegidas (sidebar + top bar)
-
-### Arquitetura de Produção
-- **Backend**: .NET 9 com SQLite
-- **Frontend**: React com Vite (build otimizado)
-- **Autenticação**: JWT com refresh tokens
-- **Segurança**: CORS, HTTPS, headers de segurança
-- **Monitoramento**: Logs estruturados e métricas
+- **ProtectedLayout**: Para páginas protegidas (navbar + conteúdo)
 
 ### Documentação Adicional
-- 📋 [DEPLOYMENT.md](DEPLOYMENT.md) - Guia completo de deploy
-- 🧹 [CLEANUP_SUMMARY.md](CLEANUP_SUMMARY.md) - Resumo da preparação para produção
 - 👥 [USER_TYPES_SYSTEM.md](ESTop1/USER_TYPES_SYSTEM.md) - Sistema de tipos de usuário
-- 💳 [PLANOS_ASSINATURA_IMPLEMENTACAO.md](ESTop1/PLANOS_ASSINATURA_IMPLEMENTACAO.md) - Sistema de assinaturas
 - 🔐 [ROUTE_PROTECTION_SYSTEM.md](ESTop1Client/ROUTE_PROTECTION_SYSTEM.md) - Proteção de rotas
-- 📝 [FLUXO_CADASTRO.md](ESTop1Client/FLUXO_CADASTRO.md) - Fluxo de cadastro
+- 📝 [OPENAI_SETUP.md](ESTop1/ESTop1/OPENAI_SETUP.md) - Configuração da busca por IA
 
 ## 📝 Licença
 

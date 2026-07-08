@@ -7,7 +7,6 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Switch } from './ui/switch';
 import { Loader2, Save, X, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import UploadFoto from './UploadFoto';
@@ -143,11 +142,14 @@ const EditarPerfilTime: React.FC<EditarPerfilTimeProps> = ({
               <div className="space-y-2">
                 <Label>Status de Contratação</Label>
                 <div className="flex items-center space-x-2">
-                  <Switch
+                  <input
+                    id="contratando"
+                    type="checkbox"
                     checked={formData.contratando}
-                    onCheckedChange={(checked) => handleInputChange('contratando', checked)}
+                    onChange={(e) => handleInputChange('contratando', e.target.checked)}
+                    className="h-4 w-4 rounded border border-input"
                   />
-                  <Label className="text-sm">
+                  <Label htmlFor="contratando" className="text-sm">
                     {formData.contratando ? 'Contratando jogadores' : 'Não contratando'}
                   </Label>
                 </div>

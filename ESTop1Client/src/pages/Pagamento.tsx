@@ -56,8 +56,10 @@ export default function Pagamento() {
     email: user?.email || ''
   });
   const [loading, setLoading] = useState(false);
-  const [etapa, setEtapa] = useState<'metodo' | 'dados' | 'confirmacao'>('metodo');
+  const [etapa, setEtapa] = useState<'metodo' | 'dados' | 'confirmacao' | 'pix' | 'aguardando'>('metodo');
   const [erro, setErro] = useState<string | null>(null);
+  const [pagamentoId, setPagamentoId] = useState<string | null>(null);
+  const [pixQrCodeBase64, setPixQrCodeBase64] = useState<string | null>(null);
 
   useEffect(() => {
     // Recuperar dados do plano da navegação
@@ -116,6 +118,23 @@ export default function Pagamento() {
     }
   };
 
+  useEffect(() => {
+    if (etapa !== 'pix' || !pagamentoId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const status = await api.pagamentos.obterStatus(pagamentoId);
+        if (status.status === 'Aprovado') {
+          navigate('/pagamento-sucesso', { state: { plano, pagamentoId } });
+        }
+      } catch {
+        // continua polling
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [etapa, pagamentoId, navigate, plano]);
+
   const handleFinalizarPagamento = async () => {
     if (!plano) return;
 
@@ -123,22 +142,28 @@ export default function Pagamento() {
     setErro(null);
 
     try {
-      if (plano.tipo === 'Gratuito') {
-        // Para plano gratuito, apenas criar a assinatura
-        await api.assinaturas.criar(plano.tipo);
-      } else {
-        // Para planos pagos, simular processamento de pagamento
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Simular delay
-        await api.assinaturas.criar(plano.tipo);
+      const metodoApi = dadosPagamento.metodo === 'pix' ? 'pix' : 'checkout';
+      const resultado = await api.pagamentos.checkout(plano.tipo, metodoApi);
+
+      if (resultado.aprovadoImediatamente) {
+        navigate('/pagamento-sucesso', { state: { plano, pagamentoId: resultado.pagamentoId } });
+        return;
       }
 
-      // Redirecionar para página de sucesso
-      navigate('/pagamento-sucesso', { 
-        state: { 
-          plano: plano,
-          dadosPagamento: dadosPagamento 
-        } 
-      });
+      if (resultado.checkoutUrl) {
+        window.location.href = resultado.checkoutUrl;
+        return;
+      }
+
+      if (resultado.pixQrCodeBase64) {
+        setPagamentoId(resultado.pagamentoId);
+        setPixQrCodeBase64(resultado.pixQrCodeBase64);
+        setEtapa('pix');
+        return;
+      }
+
+      setPagamentoId(resultado.pagamentoId);
+      setEtapa('aguardando');
     } catch (error) {
       console.error('Erro ao processar pagamento:', error);
       setErro('Erro ao processar pagamento. Tente novamente.');
@@ -147,15 +172,31 @@ export default function Pagamento() {
     }
   };
 
-  const validarDados = () => {
-    if (dadosPagamento.metodo === 'cartao') {
-      return dadosPagamento.numeroCartao && 
-             dadosPagamento.nomeCartao && 
-             dadosPagamento.validadeCartao && 
-             dadosPagamento.cvvCartao &&
-             dadosPagamento.cpf;
+  const handleSimularAprovacaoDev = async () => {
+    if (!pagamentoId) return;
+
+    setLoading(true);
+    setErro(null);
+
+    try {
+      const resultado = await api.pagamentos.simularAprovacao(pagamentoId);
+      if (resultado.aprovadoImediatamente || resultado.status === 'Aprovado') {
+        navigate('/pagamento-sucesso', { state: { plano, pagamentoId: resultado.pagamentoId } });
+      }
+    } catch (error) {
+      console.error('Erro ao simular pagamento:', error);
+      setErro('Não foi possível confirmar o pagamento de desenvolvimento.');
+    } finally {
+      setLoading(false);
     }
-    return dadosPagamento.cpf && dadosPagamento.email;
+  };
+
+  const validarDados = () => {
+    if (plano?.tipo === 'Gratuito') return true;
+    if (dadosPagamento.metodo === 'pix') {
+      return Boolean(dadosPagamento.cpf && dadosPagamento.email);
+    }
+    return Boolean(dadosPagamento.cpf && dadosPagamento.email);
   };
 
   if (!plano) {
@@ -472,6 +513,31 @@ export default function Pagamento() {
                     </div>
                   )}
 
+                  {etapa === 'pix' && pixQrCodeBase64 && (
+                    <div className="space-y-6 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        Escaneie o QR Code PIX para concluir o pagamento.
+                      </p>
+                      <img
+                        src={`data:image/png;base64,${pixQrCodeBase64}`}
+                        alt="QR Code PIX"
+                        className="mx-auto w-56 h-56 border rounded-lg"
+                      />
+                      <p className="text-xs text-muted-foreground">Aguardando confirmação...</p>
+                    </div>
+                  )}
+
+                  {etapa === 'aguardando' && (
+                    <div className="space-y-4 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        Pagamento pendente. Em desenvolvimento, confirme manualmente.
+                      </p>
+                      <Button onClick={handleSimularAprovacaoDev} disabled={loading}>
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Confirmar pagamento (dev)'}
+                      </Button>
+                    </div>
+                  )}
+
                   {etapa === 'confirmacao' && (
                     <div className="space-y-6">
                       <div className="p-4 bg-muted/50 rounded-lg">
@@ -507,14 +573,15 @@ export default function Pagamento() {
                         </div>
                       </div>
 
-                      <div className="p-4 border border-success/20 bg-success/5 rounded-lg">
-                        <div className="flex items-center gap-2 text-success">
-                          <Check className="h-4 w-4" />
+                      <div className="p-4 border border-primary/20 bg-primary/5 rounded-lg">
+                        <div className="flex items-center gap-2 text-primary">
+                          <Shield className="h-4 w-4" />
                           <span className="text-sm font-medium">
-                            {plano.tipo === 'Gratuito' 
-                              ? 'Plano gratuito ativado imediatamente'
-                              : 'Pagamento processado com sucesso'
-                            }
+                            {plano.tipo === 'Gratuito'
+                              ? 'Plano gratuito será ativado imediatamente'
+                              : dadosPagamento.metodo === 'pix'
+                                ? 'Você receberá um QR Code PIX para pagamento'
+                                : 'Você será redirecionado ao Mercado Pago para concluir o pagamento'}
                           </span>
                         </div>
                       </div>
@@ -522,7 +589,7 @@ export default function Pagamento() {
                   )}
 
                   <div className="flex gap-4 mt-8">
-                    {etapa !== 'metodo' && (
+                    {etapa !== 'metodo' && etapa !== 'pix' && etapa !== 'aguardando' && (
                       <Button variant="outline" onClick={handleVoltar}>
                         Voltar
                       </Button>

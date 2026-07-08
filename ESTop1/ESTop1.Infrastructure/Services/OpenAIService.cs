@@ -1,8 +1,6 @@
-using Azure.AI.OpenAI;
 using ESTop1.Domain;
 using ESTop1.Domain.DTOs;
 using ESTop1.Domain.Interfaces;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
@@ -13,18 +11,18 @@ public class OpenAIService : IOpenAIService
     private const string DefaultFotoUrl = "/player-default.jpg";
     private readonly IJogadorRepository _jogadorRepository;
     private readonly ITimeRepository _timeRepository;
-    private readonly IConfiguration _configuration;
+    private readonly ILLMChatService _llmChatService;
     private readonly ILogger<OpenAIService> _logger;
 
     public OpenAIService(
         IJogadorRepository jogadorRepository,
         ITimeRepository timeRepository,
-        IConfiguration configuration,
+        ILLMChatService llmChatService,
         ILogger<OpenAIService> logger)
     {
         _jogadorRepository = jogadorRepository;
         _timeRepository = timeRepository;
-        _configuration = configuration;
+        _llmChatService = llmChatService;
         _logger = logger;
     }
 
@@ -69,46 +67,6 @@ public class OpenAIService : IOpenAIService
         return (201, CriarPayloadJogadorCriado(jogadorCriado, estatistica, dadosIA, consulta));
     }
 
-    public async Task<(int StatusCode, object Payload)> BuscarJogadoresTesteAsync(string consulta, CancellationToken cancellationToken = default)
-    {
-        var jogadorExistente = await _jogadorRepository.ObterPorApelidoAsync(consulta, cancellationToken);
-
-        if (jogadorExistente is not null)
-        {
-            return (200, CriarPayloadJogadorExistente(jogadorExistente, consulta));
-        }
-
-        var dadosIA = await BuscarDadosJogadorPorCampos(consulta, cancellationToken);
-
-        var jogadorConcorrente = await _jogadorRepository.ObterPorApelidoAsync(consulta, cancellationToken);
-
-        if (jogadorConcorrente is not null)
-        {
-            return (200, CriarPayloadJogadorConcorrente(jogadorConcorrente, consulta));
-        }
-
-        var novoJogador = new Jogador
-        {
-            Id = Guid.NewGuid(),
-            Apelido = consulta.Trim(),
-            Pais = dadosIA.Pais,
-            Idade = dadosIA.Idade,
-            FuncaoPrincipal = ParseOuPadrao(dadosIA.FuncaoPrincipal, Funcao.Entry),
-            Status = ParseOuPadrao(dadosIA.Status, StatusJogador.Profissional),
-            Disponibilidade = Disponibilidade.Livre,
-            ValorDeMercado = dadosIA.ValorDeMercado,
-            FotoUrl = dadosIA.FotoUrl,
-            Visivel = true
-        };
-
-        novoJogador.Estatisticas.Add(CriarEstatisticaInicial(novoJogador.Id, dadosIA.Rating));
-
-        var estatistica = novoJogador.Estatisticas.First();
-        var jogadorCriado = await _jogadorRepository.CriarAsync(novoJogador, cancellationToken);
-
-        return (201, CriarPayloadJogadorCriado(jogadorCriado, estatistica, dadosIA, consulta));
-    }
-
     public async Task<(int StatusCode, object Payload)> SugerirFiltrosAsync(string descricao, CancellationToken cancellationToken = default)
     {
         var prompt = $@"
@@ -136,19 +94,11 @@ Retorne um JSON com os filtros sugeridos:
 
 Se algum filtro não for aplicável, omita-o do JSON.";
 
-        var response = await GetClient().GetChatCompletionsAsync(new ChatCompletionsOptions
-        {
-            DeploymentName = "gpt-3.5-turbo",
-            Messages =
-            {
-                new ChatRequestSystemMessage("Você é um especialista em CS2. Responda apenas com JSON válido."),
-                new ChatRequestUserMessage(prompt)
-            },
-            MaxTokens = 300,
-            Temperature = 0.1f
-        }, cancellationToken);
-
-        var respostaIA = response.Value.Choices[0].Message.Content.Trim();
+        var respostaIA = await _llmChatService.CompleteAsync(
+            "Você é um especialista em CS2. Responda apenas com JSON válido.",
+            prompt,
+            300,
+            cancellationToken);
 
         try
         {
@@ -246,31 +196,11 @@ Se algum filtro não for aplicável, omita-o do JSON.";
 
     private async Task<string> FazerPerguntaIA(string prompt, int maxTokens, CancellationToken cancellationToken)
     {
-        var response = await GetClient().GetChatCompletionsAsync(new ChatCompletionsOptions
-        {
-            DeploymentName = "gpt-3.5-turbo",
-            Messages =
-            {
-                new ChatRequestSystemMessage("Você é um especialista em CS2. Responda APENAS com a informação solicitada, sem explicações, pontos finais ou formatação adicional."),
-                new ChatRequestUserMessage(prompt)
-            },
-            MaxTokens = maxTokens,
-            Temperature = 0.1f
-        }, cancellationToken);
-
-        return response.Value.Choices[0].Message.Content.Trim();
-    }
-
-    private OpenAIClient GetClient()
-    {
-        var apiKey = _configuration["OpenAI:ApiKey"] ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            _logger.LogWarning("OpenAI API key ausente para integração");
-            throw new InvalidOperationException("OpenAI API key não configurada");
-        }
-
-        return new OpenAIClient(apiKey);
+        return await _llmChatService.CompleteAsync(
+            "Você é um especialista em CS2. Responda APENAS com a informação solicitada, sem explicações, pontos finais ou formatação adicional.",
+            prompt,
+            maxTokens,
+            cancellationToken);
     }
 
     private async Task AssociarTimeAsync(Jogador jogador, string? nomeTime, string pais, CancellationToken cancellationToken)

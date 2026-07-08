@@ -69,6 +69,10 @@ coverage/
 node_modules/
 jspm_packages/
 
+# Vite cache
+.vite/
+**/.vite/
+
 # TypeScript cache
 *.tsbuildinfo
 

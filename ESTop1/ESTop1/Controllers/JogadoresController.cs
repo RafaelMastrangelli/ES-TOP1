@@ -16,10 +16,12 @@ namespace ESTop1.Api.Controllers;
 public class JogadoresController : ControllerBase
 {
     private readonly IJogadorService _jogadorService;
+    private readonly ILogger<JogadoresController> _logger;
     
-    public JogadoresController(IJogadorService jogadorService)
+    public JogadoresController(IJogadorService jogadorService, ILogger<JogadoresController> logger)
     {
         _jogadorService = jogadorService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -124,55 +126,29 @@ public class JogadoresController : ControllerBase
             if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userIdGuid))
                 return Unauthorized();
 
-            // Log para debug
-            Console.WriteLine($"Buscando jogador para usuário ID: {userIdGuid}");
-
             var jogador = await _jogadorService.ObterJogadorPorUsuarioIdAsync(userIdGuid, ct);
             
             if (jogador == null)
             {
-                Console.WriteLine($"Jogador não encontrado para usuário ID: {userIdGuid}");
+                _logger.LogWarning("Perfil de jogador não encontrado para usuário {UsuarioId}", userIdGuid);
                 return NotFound("Perfil de jogador não encontrado");
             }
 
-            Console.WriteLine($"Jogador encontrado: {jogador}");
             return Ok(jogador);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Erro ao obter perfil: {ex.Message}");
+            _logger.LogError(ex, "Erro ao obter perfil do jogador");
             return BadRequest($"Erro ao obter perfil: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// DEBUG: Lista todos os jogadores (temporário)
+    /// Cria o perfil de jogador para o usuário logado
     /// </summary>
-    [HttpGet("debug/todos")]
-    public async Task<IActionResult> DebugTodosJogadores(CancellationToken ct)
-    {
-        try
-        {
-            var jogadores = await _jogadorService.ListarJogadoresAsync(new FiltroJogador(), ct);
-            return Ok(new
-            {
-                total = jogadores.Total,
-                jogadores = jogadores.Items,
-                message = "Lista de todos os jogadores para debug"
-            });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest($"Erro ao listar jogadores: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// DEBUG: Criar jogador para usuário atual (temporário)
-    /// </summary>
-    [HttpPost("debug/criar-para-usuario")]
+    [HttpPost("meu-perfil")]
     [AuthorizeJogador]
-    public async Task<IActionResult> DebugCriarJogadorParaUsuario(CancellationToken ct)
+    public async Task<IActionResult> CriarMeuPerfil(CancellationToken ct)
     {
         try
         {
@@ -180,18 +156,19 @@ public class JogadoresController : ControllerBase
             if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userIdGuid))
                 return Unauthorized();
 
+            var existente = await _jogadorService.ObterJogadorPorUsuarioIdAsync(userIdGuid, ct);
+            if (existente != null)
+                return Conflict("Perfil de jogador já existe");
+
             var nome = User.FindFirst(ClaimTypes.Name)?.Value ?? "Usuário";
-            
             var jogador = await _jogadorService.CriarJogadorParaUsuarioAsync(userIdGuid, nome, ct);
-            
-            return Ok(new { 
-                message = "Jogador criado com sucesso",
-                jogador = jogador
-            });
+
+            return CreatedAtAction(nameof(MeuPerfil), jogador);
         }
         catch (Exception ex)
         {
-            return BadRequest($"Erro ao criar jogador: {ex.Message}");
+            _logger.LogError(ex, "Erro ao criar perfil do jogador");
+            return BadRequest($"Erro ao criar perfil: {ex.Message}");
         }
     }
 

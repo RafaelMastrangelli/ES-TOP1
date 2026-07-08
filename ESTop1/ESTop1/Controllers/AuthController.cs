@@ -1,5 +1,6 @@
 using ESTop1.Api.DTOs;
 using ESTop1.Domain;
+using ESTop1.Domain.DTOs;
 using ESTop1.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,12 +14,21 @@ public class AuthController : ControllerBase
     private readonly IAuthService _authService;
     private readonly IAssinaturaService _assinaturaService;
     private readonly IJogadorService _jogadorService;
+    private readonly IUsuarioRepository _usuarioRepository;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IAuthService authService, IAssinaturaService assinaturaService, IJogadorService jogadorService)
+    public AuthController(
+        IAuthService authService,
+        IAssinaturaService assinaturaService,
+        IJogadorService jogadorService,
+        IUsuarioRepository usuarioRepository,
+        ILogger<AuthController> logger)
     {
         _authService = authService;
         _assinaturaService = assinaturaService;
         _jogadorService = jogadorService;
+        _usuarioRepository = usuarioRepository;
+        _logger = logger;
     }
 
     /// <summary>
@@ -58,12 +68,12 @@ public class AuthController : ControllerBase
                 });
             }
 
-            Console.WriteLine($"Tentativa de login para email: {request.Email}");
+            _logger.LogInformation("Tentativa de login para email: {Email}", request.Email);
             
             var usuario = await _authService.ValidarCredenciaisAsync(request.Email, request.Senha);
             if (usuario == null)
             {
-                Console.WriteLine($"Usuário não encontrado ou credenciais inválidas para: {request.Email}");
+                _logger.LogWarning("Credenciais inválidas para email: {Email}", request.Email);
                 return Unauthorized(new ErrorResponse
                 {
                     Message = "Email ou senha incorretos",
@@ -71,7 +81,7 @@ public class AuthController : ControllerBase
                 });
             }
             
-            Console.WriteLine($"Usuário encontrado: {usuario.Nome} ({usuario.Email})");
+            _logger.LogInformation("Login bem-sucedido para usuário {UsuarioId}", usuario.Id);
 
             // Verificar se o usuário está ativo
             if (!usuario.Ativo)
@@ -83,31 +93,10 @@ public class AuthController : ControllerBase
                 });
             }
 
-            var token = await _authService.GerarTokenAsync(usuario);
+            var tokens = await _authService.EmitirTokensAsync(usuario);
             var assinatura = await _assinaturaService.ObterAssinaturaAtivaAsync(usuario.Id);
 
-            var response = new LoginResponse
-            {
-                Token = token,
-                Usuario = new UsuarioResponse
-                {
-                    Id = usuario.Id,
-                    Nome = usuario.Nome,
-                    Email = usuario.Email,
-                    Tipo = usuario.Tipo.ToString(),
-                    DataCriacao = usuario.DataCriacao,
-                    UltimoLogin = usuario.UltimoLogin
-                },
-                Assinatura = assinatura != null ? new AssinaturaResponse
-                {
-                    Id = assinatura.Id,
-                    Plano = assinatura.Plano.ToString(),
-                    Status = assinatura.Status.ToString(),
-                    DataInicio = assinatura.DataInicio,
-                    DataFim = assinatura.DataFim,
-                    ValorMensal = assinatura.ValorMensal
-                } : null
-            };
+            var response = CriarLoginResponse(usuario, tokens, assinatura);
 
             return Ok(response);
         }
@@ -236,31 +225,10 @@ public class AuthController : ControllerBase
                 await _assinaturaService.CriarAssinaturaAsync(usuario.Id, PlanoAssinatura.Gratuito);
             }
 
-            var token = await _authService.GerarTokenAsync(usuario);
+            var tokens = await _authService.EmitirTokensAsync(usuario);
             var assinatura = await _assinaturaService.ObterAssinaturaAtivaAsync(usuario.Id);
 
-            var response = new LoginResponse
-            {
-                Token = token,
-                Usuario = new UsuarioResponse
-                {
-                    Id = usuario.Id,
-                    Nome = usuario.Nome,
-                    Email = usuario.Email,
-                    Tipo = usuario.Tipo.ToString(),
-                    DataCriacao = usuario.DataCriacao,
-                    UltimoLogin = usuario.UltimoLogin
-                },
-                Assinatura = assinatura != null ? new AssinaturaResponse
-                {
-                    Id = assinatura.Id,
-                    Plano = assinatura.Plano.ToString(),
-                    Status = assinatura.Status.ToString(),
-                    DataInicio = assinatura.DataInicio,
-                    DataFim = assinatura.DataFim,
-                    ValorMensal = assinatura.ValorMensal
-                } : null
-            };
+            var response = CriarLoginResponse(usuario, tokens, assinatura);
 
             return Ok(response);
         }
@@ -292,13 +260,8 @@ public class AuthController : ControllerBase
     {
         try
         {
-            Console.WriteLine($"AuthController: ObterUsuarioAtual chamado");
-            
             var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
-            Console.WriteLine($"AuthController: UserId: {userId}");
-            
             var assinatura = await _assinaturaService.ObterAssinaturaAtivaAsync(userId);
-            Console.WriteLine($"AuthController: Assinatura encontrada: {assinatura != null}");
 
             var response = new
             {
@@ -320,31 +283,71 @@ public class AuthController : ControllerBase
                 } : null
             };
 
-            Console.WriteLine($"AuthController: Resposta criada, retornando...");
             return Ok(response);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"AuthController: Erro ao obter dados do usuário: {ex.Message}");
+            _logger.LogError(ex, "Erro ao obter dados do usuário autenticado");
             return BadRequest($"Erro ao obter dados do usuário: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// DEBUG: Verifica se um usuário existe no banco
+    /// Renova o access token usando refresh token
     /// </summary>
-    [HttpGet("debug/usuario/{email}")]
-    public async Task<IActionResult> DebugUsuario(string email)
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
     {
-        try
+        if (string.IsNullOrWhiteSpace(request.RefreshToken))
         {
-            var usuario = await _authService.VerificarEmailExisteAsync(email);
-            return Ok(new { email, existe = usuario });
+            return BadRequest(new ErrorResponse
+            {
+                Message = "Refresh token é obrigatório",
+                ErrorCode = "REFRESH_TOKEN_REQUIRED"
+            });
         }
-        catch (Exception ex)
+
+        var tokens = await _authService.RenovarAcessoAsync(request.RefreshToken);
+        if (tokens is null)
         {
-            return BadRequest($"Erro ao verificar usuário: {ex.Message}");
+            return Unauthorized(new ErrorResponse
+            {
+                Message = "Refresh token inválido ou expirado",
+                ErrorCode = "INVALID_REFRESH_TOKEN"
+            });
         }
+
+        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var usuarioId = Guid.Parse(
+            handler.ReadJwtToken(tokens.AccessToken).Claims
+                .First(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier).Value);
+
+        var usuario = await _usuarioRepository.ObterPorIdAsync(usuarioId);
+        if (usuario is null)
+        {
+            return Unauthorized(new ErrorResponse
+            {
+                Message = "Usuário não encontrado",
+                ErrorCode = "USER_NOT_FOUND"
+            });
+        }
+
+        var assinatura = await _assinaturaService.ObterAssinaturaAtivaAsync(usuarioId);
+        return Ok(CriarLoginResponse(usuario, tokens, assinatura));
+    }
+
+    /// <summary>
+    /// Revoga o refresh token atual (logout)
+    /// </summary>
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] RefreshTokenRequest request)
+    {
+        if (!string.IsNullOrWhiteSpace(request.RefreshToken))
+        {
+            await _authService.RevogarRefreshTokenAsync(request.RefreshToken);
+        }
+
+        return Ok(new { message = "Logout realizado com sucesso" });
     }
 
     /// <summary>
@@ -388,5 +391,33 @@ public class AuthController : ControllerBase
         {
             return false;
         }
+    }
+
+    private static LoginResponse CriarLoginResponse(Usuario usuario, AuthTokenResult tokens, Assinatura? assinatura)
+    {
+        return new LoginResponse
+        {
+            Token = tokens.AccessToken,
+            RefreshToken = tokens.RefreshToken,
+            ExpiresAt = tokens.AccessTokenExpiresAt,
+            Usuario = new UsuarioResponse
+            {
+                Id = usuario.Id,
+                Nome = usuario.Nome,
+                Email = usuario.Email,
+                Tipo = usuario.Tipo.ToString(),
+                DataCriacao = usuario.DataCriacao,
+                UltimoLogin = usuario.UltimoLogin
+            },
+            Assinatura = assinatura != null ? new AssinaturaResponse
+            {
+                Id = assinatura.Id,
+                Plano = assinatura.Plano.ToString(),
+                Status = assinatura.Status.ToString(),
+                DataInicio = assinatura.DataInicio,
+                DataFim = assinatura.DataFim,
+                ValorMensal = assinatura.ValorMensal
+            } : null
+        };
     }
 }

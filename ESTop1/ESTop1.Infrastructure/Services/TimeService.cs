@@ -47,8 +47,14 @@ public class TimeService : ITimeService
         return time is null ? null : MapearDetalhe(time);
     }
 
-    public async Task<TimeDetalheDto> CriarTimeAsync(CriarTimeCommand request, CancellationToken cancellationToken = default)
+    public async Task<TimeDetalheDto> CriarTimeAsync(Guid usuarioId, CriarTimeCommand request, CancellationToken cancellationToken = default)
     {
+        var usuario = await _usuarioRepository.ObterPorIdAsync(usuarioId)
+            ?? throw new InvalidOperationException("Usuário não encontrado");
+
+        if (usuario.TimeId is not null)
+            throw new InvalidOperationException("Usuário já possui um time cadastrado");
+
         var time = new Time
         {
             Id = Guid.NewGuid(),
@@ -57,6 +63,10 @@ public class TimeService : ITimeService
         };
 
         var timeCriado = await _timeRepository.CriarAsync(time, cancellationToken);
+
+        usuario.TimeId = timeCriado.Id;
+        await _usuarioRepository.AtualizarAsync(usuario);
+
         return MapearDetalhe(timeCriado);
     }
 

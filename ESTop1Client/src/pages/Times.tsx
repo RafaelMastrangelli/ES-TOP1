@@ -63,16 +63,16 @@ const Times = () => {
             </div>
           )}
 
-          {data && data.items.length === 0 && (
+          {data && (data.items?.length ?? 0) === 0 && (
             <div className="text-center py-16">
               <p className="text-muted-foreground">Nenhum time encontrado com os filtros selecionados.</p>
             </div>
           )}
 
-          {data && data.items.length > 0 && (
+          {data && (data.items?.length ?? 0) > 0 && (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {data.items.map((time) => (
+                {data.items!.map((time) => (
                   <TimeCard key={time.id} time={time} />
                 ))}
               </div>

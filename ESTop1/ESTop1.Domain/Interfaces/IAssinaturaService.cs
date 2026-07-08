@@ -5,6 +5,7 @@ namespace ESTop1.Domain.Interfaces;
 public interface IAssinaturaService
 {
     Task<Assinatura> CriarAssinaturaAsync(Guid usuarioId, PlanoAssinatura plano);
+    Task<Assinatura> AtivarAssinaturaPorPagamentoAsync(Guid usuarioId, PlanoAssinatura plano, string idTransacao);
     Task<Assinatura?> ObterAssinaturaAtivaAsync(Guid usuarioId);
     Task<bool> VerificarAcessoAsync(Guid usuarioId, string recurso);
     Task CancelarAssinaturaAsync(Guid assinaturaId);

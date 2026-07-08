@@ -72,8 +72,7 @@ const Jogadores = () => {
     
     setIsLoadingAI(true);
     try {
-      // Usar endpoint de teste para desenvolvimento (sem verificação de assinatura)
-      const result = await api.openai.buscarJogadoresTeste(consulta);
+      const result = await api.openai.buscarJogadores(consulta);
       setAiData(result);
     } catch (error: unknown) {
       console.error('Erro ao buscar com IA:', error);
