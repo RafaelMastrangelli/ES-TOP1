@@ -236,5 +236,4 @@ A nova funcionalidade permite buscar jogadores usando linguagem natural:
 Este projeto é de uso pessoal.
 
 ---
-
 **Desenvolvido com ❤️ para a comunidade de CS2**
